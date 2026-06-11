@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人投资管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航 -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-chart-line"></i> 个人投资管理系统</h1>
+                <div class="header-actions">
+                    <button id="btn-config" class="btn btn-secondary" title="API配置">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button id="btn-refresh-all" class="btn btn-primary" title="刷新所有数据">
+                        <i class="fas fa-sync-alt"></i> 刷新数据
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 总览卡片 -->
+        <section class="overview-section">
+            <div class="overview-cards">
+                <div class="card overview-card">
+                    <div class="card-label">总资产</div>
+                    <div class="card-value" id="total-assets">¥0.00</div>
+                </div>
+                <div class="card overview-card">
+                    <div class="card-label">总盈亏</div>
+                    <div class="card-value" id="total-profit">¥0.00</div>
+                </div>
+                <div class="card overview-card">
+                    <div class="card-label">收益率</div>
+                    <div class="card-value" id="total-return">0.00%</div>
+                </div>
+                <div class="card overview-card">
+                    <div class="card-label">资产数量</div>
+                    <div class="card-value" id="total-count">0</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 标签页导航 -->
+        <section class="tabs-section">
+            <div class="tabs">
+                <button class="tab active" data-tab="all">
+                    <i class="fas fa-globe"></i> 全部
+                </button>
+                <button class="tab" data-tab="a-stock">
+                    <i class="fas fa-chart-bar"></i> A股
+                </button>
+                <button class="tab" data-tab="hk-stock">
+                    <i class="fas fa-chart-area"></i> 港股
+                </button>
+                <button class="tab" data-tab="us-stock">
+                    <i class="fas fa-chart-line"></i> 美股
+                </button>
+                <button class="tab" data-tab="fund">
+                    <i class="fas fa-fund"></i> 基金
+                </button>
+            </div>
+        </section>
+
+        <!-- 添加资产按钮 -->
+        <section class="action-section">
+            <button id="btn-add-asset" class="btn btn-success">
+                <i class="fas fa-plus"></i> 添加资产
+            </button>
+        </section>
+
+        <!-- 资产列表 -->
+        <section class="assets-section">
+            <div id="assets-list" class="assets-list">
+                <!-- 资产卡片将通过JS动态生成 -->
+                <div class="empty-state" id="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>暂无资产，点击"添加资产"开始管理您的投资</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 底部信息 -->
+        <footer class="footer">
+            <p>数据更新时间: <span id="last-update">从未更新</span></p>
+            <p class="footer-note">免责声明：本工具仅供参考，不构成投资建议。数据可能有延迟，请以官方数据为准。</p>
+        </footer>
+    </div>
+
+    <!-- 添加/编辑资产模态框 -->
+    <div id="modal-asset" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">添加资产</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-asset">
+                    <div class="form-group">
+                        <label for="asset-type">资产类型</label>
+                        <select id="asset-type" required>
+                            <option value="a-stock">A股</option>
+                            <option value="hk-stock">港股</option>
+                            <option value="us-stock">美股</option>
+                            <option value="fund">基金</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="asset-code">代码</label>
+                        <div class="input-group">
+                            <input type="text" id="asset-code" placeholder="请输入代码，如：000001" required>
+                            <button type="button" id="btn-query-info" class="btn btn-info">查询</button>
+                        </div>
+                        <small id="query-result" class="form-hint"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="asset-name">名称</label>
+                        <input type="text" id="asset-name" placeholder="自动获取或手动输入" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="asset-cost">成本价 (¥)</label>
+                        <input type="number" id="asset-cost" step="0.01" placeholder="请输入成本价" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="asset-shares">持有数量</label>
+                        <input type="number" id="asset-shares" step="1" placeholder="请输入持有数量" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="asset-current-price">当前价格 (¥)</label>
+                        <input type="number" id="asset-current-price" step="0.01" placeholder="自动获取或手动输入">
+                        <small class="form-hint">留空则自动获取最新价格</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel">取消</button>
+                        <button type="submit" class="btn btn-primary" id="btn-save">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- API配置模态框 -->
+    <div id="modal-config" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>API配置</h2>
+                <button class="modal-close" id="config-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-config">
+                    <div class="form-group">
+                        <label for="config-finnhub-key">Finnhub API Key (美股)</label>
+                        <input type="password" id="config-finnhub-key" placeholder="请输入Finnhub API Key">
+                        <small class="form-hint">用于获取美股数据，免费注册：<a href="https://finnhub.io" target="_blank">finnhub.io</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="config-biying-key">必盈API Licence (A股/港股)</label>
+                        <input type="password" id="config-biying-key" placeholder="请输入必盈API Licence">
+                        <small class="form-hint">用于获取A股/港股数据，官网：<a href="https://www.biyingapi.com" target="_blank">biyingapi.com</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="config-yahoo-enabled">使用Yahoo Finance (港股补充)</label>
+                        <input type="checkbox" id="config-yahoo-enabled" checked>
+                        <small class="form-hint">Yahoo Finance提供免费的港股数据，无需API Key</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="config-cancel">取消</button>
+                        <button type="submit" class="btn btn-primary" id="config-save">保存配置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>正在加载数据...</p>
+        </div>
+    </div>
+
+    <script src="js/storage.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
