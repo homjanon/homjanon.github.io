@@ -598,6 +598,47 @@ body {
     opacity: 0.8;
 }
 
+/* 饼图 */
+.charts-section {
+    max-width: 1200px;
+    margin: 0 auto 24px;
+    padding: 0 24px;
+}
+
+.charts-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.chart-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+}
+
+.chart-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.chart-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.chart-wrapper canvas {
+    width: 100% !important;
+    height: auto !important;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .header-content {
@@ -611,6 +652,10 @@ body {
     
     .overview-cards {
         grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .charts-container {
+        grid-template-columns: 1fr;
     }
     
     .assets-list {

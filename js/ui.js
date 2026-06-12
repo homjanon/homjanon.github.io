@@ -220,6 +220,136 @@ const UIManager = (function() {
         document.getElementById('last-update').textContent = timeStr;
     }
     
+    // 饼图实例（用于销毁重绘）
+    let assetTypeChart = null;
+    let marketChart = null;
+    
+    // 渲染投资分布饼图
+    function renderCharts(assets) {
+        if (assets.length === 0) {
+            destroyCharts();
+            return;
+        }
+        
+        // 计算各资产类型市值
+        const typeData = { 'a-stock': 0, 'hk-stock': 0, 'us-stock': 0, 'fund': 0 };
+        assets.forEach(a => {
+            const value = (a.currentPrice || 0) * a.shares;
+            typeData[a.type] = (typeData[a.type] || 0) + value;
+        });
+        
+        // 计算各市场市值
+        const marketData = { 'A股市场': 0, '港股市场': 0, '美股市场': 0, '基金市场': 0 };
+        assets.forEach(a => {
+            const value = (a.currentPrice || 0) * a.shares;
+            if (a.type === 'a-stock') marketData['A股市场'] += value;
+            else if (a.type === 'hk-stock') marketData['港股市场'] += value;
+            else if (a.type === 'us-stock') marketData['美股市场'] += value;
+            else if (a.type === 'fund') marketData['基金市场'] += value;
+        });
+        
+        // 图表颜色（中国股市颜色：涨红跌绿，饼图用品牌色系）
+        const typeColors = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6'];
+        const marketColors = ['#dc2626', '#f59e0b', '#2563eb', '#8b5cf6'];
+        
+        // 渲染资产类型饼图
+        renderPieChart('chart-asset-type', {
+            labels: ['A股', '港股', '美股', '基金'],
+            values: [typeData['a-stock'], typeData['hk-stock'], typeData['us-stock'], typeData['fund']],
+            colors: typeColors
+        }, 'assetTypeChart');
+        
+        // 渲染市场板块饼图
+        renderPieChart('chart-market', {
+            labels: ['A股市场', '港股市场', '美股市场', '基金市场'],
+            values: [marketData['A股市场'], marketData['港股市场'], marketData['美股市场'], marketData['基金市场']],
+            colors: marketColors
+        }, 'marketChart');
+    }
+    
+    // 销毁所有图表
+    function destroyCharts() {
+        if (assetTypeChart) { assetTypeChart.destroy(); assetTypeChart = null; }
+        if (marketChart) { marketChart.destroy(); marketChart = null; }
+    }
+    
+    function renderPieChart(canvasId, data, chartVar) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        // 过滤掉值为0的数据
+        const filtered = data.labels.map((label, i) => ({
+            label, value: data.values[i], color: data.colors[i]
+        })).filter(item => item.value > 0);
+        
+        if (filtered.length === 0) {
+            // 无数据时清理
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            return;
+        }
+        
+        // 销毁旧图表
+        if (chartVar === 'assetTypeChart' && assetTypeChart) assetTypeChart.destroy();
+        if (chartVar === 'marketChart' && marketChart) marketChart.destroy();
+        
+        const ctx = canvas.getContext('2d');
+        const total = filtered.reduce((sum, item) => sum + item.value, 0);
+        
+        const newChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: filtered.map(item => item.label),
+                datasets: [{
+                    data: filtered.map(item => item.value),
+                    backgroundColor: filtered.map(item => item.color),
+                    borderColor: '#ffffff',
+                    borderWidth: 3,
+                    hoverBorderWidth: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyleWidth: 10,
+                            font: { size: 12 },
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                return data.labels.map((label, i) => ({
+                                    text: `${label}  ${(data.datasets[0].data[i] / total * 100).toFixed(1)}%`,
+                                    fillStyle: data.datasets[0].backgroundColor[i],
+                                    strokeStyle: data.datasets[0].backgroundColor[i],
+                                    lineWidth: 0,
+                                    hidden: false,
+                                    index: i,
+                                    pointStyle: 'circle'
+                                }));
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed;
+                                const pct = (value / total * 100).toFixed(1);
+                                return ` ${context.label}: ¥${value.toLocaleString('zh-CN', {minimumFractionDigits: 2})} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        if (chartVar === 'assetTypeChart') assetTypeChart = newChart;
+        if (chartVar === 'marketChart') marketChart = newChart;
+    }
+    
     // 公开API
     return {
         TYPE_MAP,
@@ -228,6 +358,7 @@ const UIManager = (function() {
         formatDate,
         renderOverview,
         renderAssetsList,
+        renderCharts,
         renderTabs,
         showLoading,
         hideLoading,

@@ -105,8 +105,7 @@ const StorageManager = (function() {
         return {
             finnhubKey: '',
             biyingKey: '',
-            yahooEnabled: true,
-            demoMode: true  // 添加演示模式
+            demoMode: true
         };
     }
     

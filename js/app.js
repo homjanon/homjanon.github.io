@@ -102,6 +102,7 @@ const App = (function() {
     function render() {
         const assets = StorageManager.getAssets();
         UIManager.renderOverview(assets);
+        UIManager.renderCharts(assets);
         UIManager.renderAssetsList(assets, currentFilter);
     }
     
@@ -151,7 +152,7 @@ const App = (function() {
         
         document.getElementById('config-finnhub-key').value = config.finnhubKey || '';
         document.getElementById('config-biying-key').value = config.biyingKey || '';
-        document.getElementById('config-yahoo-enabled').checked = config.yahooEnabled !== false;
+        document.getElementById('config-demo-mode').checked = config.demoMode !== false;
         
         showModal('modal-config');
     }
@@ -345,12 +346,12 @@ const App = (function() {
     function saveConfig() {
         const finnhubKey = document.getElementById('config-finnhub-key').value.trim();
         const biyingKey = document.getElementById('config-biying-key').value.trim();
-        const yahooEnabled = document.getElementById('config-yahoo-enabled').checked;
+        const demoMode = document.getElementById('config-demo-mode').checked;
         
         const config = {
             finnhubKey,
             biyingKey,
-            yahooEnabled
+            demoMode
         };
         
         StorageManager.saveConfig(config);

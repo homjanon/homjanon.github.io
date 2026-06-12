@@ -6,6 +6,7 @@
     <title>个人投资管理系统</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -42,6 +43,24 @@
                 <div class="card overview-card">
                     <div class="card-label">资产数量</div>
                     <div class="card-value" id="total-count">0</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 饼图：投资分布 -->
+        <section class="charts-section">
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3 class="chart-title">资产类别分布</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-asset-type"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">市场板块分布</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-market"></canvas>
+                    </div>
                 </div>
             </div>
         </section>
@@ -161,12 +180,13 @@
                     <div class="form-group">
                         <label for="config-biying-key">必盈API Licence (A股/港股)</label>
                         <input type="password" id="config-biying-key" placeholder="请输入必盈API Licence">
-                        <small class="form-hint">用于获取A股/港股数据，官网：<a href="https://www.biyingapi.com" target="_blank">biyingapi.com</a></small>
+                        <small class="form-hint">用于获取A股和港股数据，官网：<a href="https://www.biyingapi.com" target="_blank">biyingapi.com</a></small>
                     </div>
                     <div class="form-group">
-                        <label for="config-yahoo-enabled">使用Yahoo Finance (港股补充)</label>
-                        <input type="checkbox" id="config-yahoo-enabled" checked>
-                        <small class="form-hint">Yahoo Finance提供免费的港股数据，无需API Key</small>
+                        <label>
+                            <input type="checkbox" id="config-demo-mode" checked> 
+                            演示模式（无API Key时使用模拟数据）
+                        </label>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" id="config-cancel">取消</button>
