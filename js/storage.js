@@ -105,6 +105,7 @@ const StorageManager = (function() {
         return {
             finnhubKey: '',
             biyingKey: '',
+            corsProxy: 'https://api.codetabs.com/v1/proxy?quest=',
             demoMode: true
         };
     }

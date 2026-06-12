@@ -183,6 +183,11 @@
                         <small class="form-hint">用于获取A股和港股数据，官网：<a href="https://www.biyingapi.com" target="_blank">biyingapi.com</a></small>
                     </div>
                     <div class="form-group">
+                        <label for="config-cors-proxy">CORS代理URL（港股/基金必需）</label>
+                        <input type="text" id="config-cors-proxy" placeholder="https://api.codetabs.com/v1/proxy?quest=">
+                        <small class="form-hint">港股和基金API需要CORS代理才能从浏览器调用。默认使用免费公共代理，也可自行搭建</small>
+                    </div>
+                    <div class="form-group">
                         <label>
                             <input type="checkbox" id="config-demo-mode" checked> 
                             演示模式（无API Key时使用模拟数据）

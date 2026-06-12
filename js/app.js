@@ -152,6 +152,7 @@ const App = (function() {
         
         document.getElementById('config-finnhub-key').value = config.finnhubKey || '';
         document.getElementById('config-biying-key').value = config.biyingKey || '';
+        document.getElementById('config-cors-proxy').value = config.corsProxy || '';
         document.getElementById('config-demo-mode').checked = config.demoMode !== false;
         
         showModal('modal-config');
@@ -346,13 +347,10 @@ const App = (function() {
     function saveConfig() {
         const finnhubKey = document.getElementById('config-finnhub-key').value.trim();
         const biyingKey = document.getElementById('config-biying-key').value.trim();
+        const corsProxy = document.getElementById('config-cors-proxy').value.trim();
         const demoMode = document.getElementById('config-demo-mode').checked;
         
-        const config = {
-            finnhubKey,
-            biyingKey,
-            demoMode
-        };
+        const config = { finnhubKey, biyingKey, corsProxy, demoMode };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
