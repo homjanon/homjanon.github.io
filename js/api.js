@@ -2,9 +2,8 @@
  * API调用封装模块
  * 数据源：
  * - A股：必盈API (biyingapi.com)
- * - 港股：Yahoo Finance → 通过CORS代理
+ * - 港股：Yahoo Finance (query1.finance.yahoo.com)
  * - 美股：Finnhub API (finnhub.io)
- * - 基金：东方财富API (push2.eastmoney.com)
  */
 
 const APIManager = (function() {
@@ -12,8 +11,7 @@ const APIManager = (function() {
         finnhub: 'https://finnhub.io/api/v1',
         biying: 'https://api.biyingapi.com',
         yahooChart: 'https://query1.finance.yahoo.com/v8/finance/chart',
-        yahooQuote: 'https://query1.finance.yahoo.com/v7/finance/quote',
-        eastMoney: 'https://push2.eastmoney.com/api/qt/stock/get'
+        yahooQuote: 'https://query1.finance.yahoo.com/v7/finance/quote'
     };
     
     // 默认CORS代理列表（按优先级尝试）
@@ -101,8 +99,16 @@ const APIManager = (function() {
                 }
                 const result = await response.json();
                 
-                // 处理codetabs返回格式：它包裹在对象里
+                // 处理codetabs返回格式：它把真实响应包在contents字段里
                 if (proxy.includes('codetabs.com')) {
+                    if (result.contents) {
+                        try {
+                            return JSON.parse(result.contents);
+                        } catch (e) {
+                            // contents可能是纯文本非JSON，原样返回
+                            return result.contents;
+                        }
+                    }
                     return result;
                 }
                 // allorigins直接返回原始内容
@@ -297,47 +303,6 @@ const APIManager = (function() {
         return { name: code, code };
     }
     
-    // ==================== 东方财富API (基金) ====================
-    
-    // 获取基金净值（东方财富 push2 API — HTTPS，标准JSON，自动走代理）
-    async function getEastMoneyFundNav(code) {
-        // 基金secid: 0.{code}（深圳）或 1.{code}（上海）
-        const secids = [`0.${code}`, `1.${code}`];
-        let lastError = null;
-        
-        for (const secid of secids) {
-            try {
-                const url = `${API_BASE.eastMoney}?secid=${secid}&fields=f43,f57,f58,f60,f169`;
-                const data = await fetchAPI(url);
-                
-                if (!data || !data.data) continue;
-                const d = data.data;
-                
-                // 东方财富返回值单位：f43=净值*1000, f60=涨跌幅*100, f169=涨跌额*1000
-                const nav = (d.f43 || 0) / 1000;
-                const name = d.f58 || '';
-                
-                if (!nav && !name) continue;
-                
-                return {
-                    code: d.f57 || code,
-                    name: name || code,
-                    nav: nav,
-                    estimateNav: nav,
-                    changePercent: (d.f60 || 0) / 100,
-                    change: (d.f169 || 0) / 1000,
-                    timestamp: Date.now(),
-                    price: nav
-                };
-            } catch (error) {
-                lastError = error;
-                console.warn(`东方财富 secid=${secid} 失败:`, error.message);
-            }
-        }
-        
-        throw new Error(`未找到基金 ${code}。可能原因：1) 代码错误 2) 该基金已清盘或暂停申购`);
-    }
-    
     // ==================== 统一接口 ====================
     
     async function getQuote(type, code) {
@@ -351,7 +316,6 @@ const APIManager = (function() {
             case 'us-stock': return await getFinnhubQuote(code);
             case 'a-stock': return await getBiyingAStockQuote(code);
             case 'hk-stock': return await getYahooHKQuote(code);
-            case 'fund': return await getEastMoneyFundNav(code);
             default: throw new Error(`不支持的资产类型: ${type}`);
         }
     }
@@ -372,10 +336,6 @@ const APIManager = (function() {
             case 'hk-stock': {
                 const h = await getYahooHKName(code);
                 return h.name || code;
-            }
-            case 'fund': {
-                const f = await getEastMoneyFundNav(code);
-                return f.name || code;
             }
             default: return code;
         }
@@ -434,16 +394,14 @@ const APIManager = (function() {
     };
     
     function getDemoQuote(type, code) {
-        const bp = DEMO_BASE_PRICES[code] || (type === 'fund' ? 1.0 : 50.0);
+        const bp = DEMO_BASE_PRICES[code] || 50.0;
         const cp = (Math.random() - 0.5) * 4;
         const ch = bp * cp / 100;
         const p = bp + ch;
         return {
-            price: type === 'fund' ? bp : p, change: ch, changePercent: cp,
+            price: p, change: ch, changePercent: cp,
             high: p*1.01, low: p*0.99, open: bp, previousClose: bp,
-            volume: Math.floor(Math.random()*1000000), timestamp: Date.now(),
-            estimateNav: type === 'fund' ? p : undefined,
-            nav: type === 'fund' ? bp : undefined
+            volume: Math.floor(Math.random()*1000000), timestamp: Date.now()
         };
     }
     
@@ -453,7 +411,6 @@ const APIManager = (function() {
         getFinnhubQuote, getFinnhubCompanyProfile,
         getBiyingAStockQuote, getBiyingAStockName,
         getYahooHKQuote, getYahooHKName,
-        getEastMoneyFundNav,
         getQuote, getName, updateAllPrices
     };
 })();

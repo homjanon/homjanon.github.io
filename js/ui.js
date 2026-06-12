@@ -8,8 +8,7 @@ const UIManager = (function() {
     const TYPE_MAP = {
         'a-stock': { name: 'A股', badge: 'A股', class: 'badge-a-stock' },
         'hk-stock': { name: '港股', badge: '港股', class: 'badge-hk-stock' },
-        'us-stock': { name: '美股', badge: '美股', class: 'badge-us-stock' },
-        'fund': { name: '基金', badge: '基金', class: 'badge-fund' }
+        'us-stock': { name: '美股', badge: '美股', class: 'badge-us-stock' }
     };
     
     // 格式化货币
@@ -166,13 +165,16 @@ const UIManager = (function() {
     // 显示加载动画
     function showLoading(message = '正在加载数据...') {
         const overlay = document.getElementById('loading-overlay');
-        overlay.querySelector('p').textContent = message;
+        if (!overlay) return;
+        const p = overlay.querySelector('p');
+        if (p) p.textContent = message;
         overlay.style.display = 'flex';
     }
     
     // 隐藏加载动画
     function hideLoading() {
         const overlay = document.getElementById('loading-overlay');
+        if (!overlay) return;
         overlay.style.display = 'none';
     }
     
@@ -232,37 +234,36 @@ const UIManager = (function() {
         }
         
         // 计算各资产类型市值
-        const typeData = { 'a-stock': 0, 'hk-stock': 0, 'us-stock': 0, 'fund': 0 };
+        const typeData = { 'a-stock': 0, 'hk-stock': 0, 'us-stock': 0 };
         assets.forEach(a => {
             const value = (a.currentPrice || 0) * a.shares;
             typeData[a.type] = (typeData[a.type] || 0) + value;
         });
         
         // 计算各市场市值
-        const marketData = { 'A股市场': 0, '港股市场': 0, '美股市场': 0, '基金市场': 0 };
+        const marketData = { 'A股市场': 0, '港股市场': 0, '美股市场': 0 };
         assets.forEach(a => {
             const value = (a.currentPrice || 0) * a.shares;
             if (a.type === 'a-stock') marketData['A股市场'] += value;
             else if (a.type === 'hk-stock') marketData['港股市场'] += value;
             else if (a.type === 'us-stock') marketData['美股市场'] += value;
-            else if (a.type === 'fund') marketData['基金市场'] += value;
         });
         
         // 图表颜色（中国股市颜色：涨红跌绿，饼图用品牌色系）
-        const typeColors = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6'];
-        const marketColors = ['#dc2626', '#f59e0b', '#2563eb', '#8b5cf6'];
+        const typeColors = ['#2563eb', '#f59e0b', '#10b981'];
+        const marketColors = ['#dc2626', '#f59e0b', '#2563eb'];
         
         // 渲染资产类型饼图
         renderPieChart('chart-asset-type', {
-            labels: ['A股', '港股', '美股', '基金'],
-            values: [typeData['a-stock'], typeData['hk-stock'], typeData['us-stock'], typeData['fund']],
+            labels: ['A股', '港股', '美股'],
+            values: [typeData['a-stock'], typeData['hk-stock'], typeData['us-stock']],
             colors: typeColors
         }, 'assetTypeChart');
         
         // 渲染市场板块饼图
         renderPieChart('chart-market', {
-            labels: ['A股市场', '港股市场', '美股市场', '基金市场'],
-            values: [marketData['A股市场'], marketData['港股市场'], marketData['美股市场'], marketData['基金市场']],
+            labels: ['A股市场', '港股市场', '美股市场'],
+            values: [marketData['A股市场'], marketData['港股市场'], marketData['美股市场']],
             colors: marketColors
         }, 'marketChart');
     }
