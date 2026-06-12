@@ -4,7 +4,7 @@
  * - A股：必盈API (biyingapi.com)
  * - 港股：Yahoo Finance → 通过CORS代理
  * - 美股：Finnhub API (finnhub.io)
- * - 基金：天天基金网 → 通过CORS代理
+ * - 基金：东方财富API (push2.eastmoney.com)
  */
 
 const APIManager = (function() {
@@ -13,7 +13,7 @@ const APIManager = (function() {
         biying: 'https://api.biyingapi.com',
         yahooChart: 'https://query1.finance.yahoo.com/v8/finance/chart',
         yahooQuote: 'https://query1.finance.yahoo.com/v7/finance/quote',
-        tiantianFund: 'http://fundgz.1234567.com.cn/js'
+        eastMoney: 'https://push2.eastmoney.com/api/qt/stock/get'
     };
     
     // 默认CORS代理列表（按优先级尝试）
@@ -297,51 +297,45 @@ const APIManager = (function() {
         return { name: code, code };
     }
     
-    // ==================== 基金 (天天基金网 → CORS代理) ====================  
+    // ==================== 东方财富API (基金) ====================
     
-    async function getTiandianFundNav(code) {
-        // 天天基金网不支持浏览器CORS，必须通过代理
-        // 使用HTTP（天天基金网不支持HTTPS）
-        const url = `${API_BASE.tiantianFund}/${code}.js?rt=${Date.now()}`;
+    // 获取基金净值（东方财富 push2 API — HTTPS，标准JSON，自动走代理）
+    async function getEastMoneyFundNav(code) {
+        // 基金secid: 0.{code}（深圳）或 1.{code}（上海）
+        const secids = [`0.${code}`, `1.${code}`];
+        let lastError = null;
         
-        // 直接用代理获取文本
-        const text = await fetchText(url);
-        
-        if (!text || text.trim() === '' || text.includes('404')) {
-            throw new Error(`基金 ${code} 不存在，请检查代码（6位数字，如110022）`);
+        for (const secid of secids) {
+            try {
+                const url = `${API_BASE.eastMoney}?secid=${secid}&fields=f43,f57,f58,f60,f169`;
+                const data = await fetchAPI(url);
+                
+                if (!data || !data.data) continue;
+                const d = data.data;
+                
+                // 东方财富返回值单位：f43=净值*1000, f60=涨跌幅*100, f169=涨跌额*1000
+                const nav = (d.f43 || 0) / 1000;
+                const name = d.f58 || '';
+                
+                if (!nav && !name) continue;
+                
+                return {
+                    code: d.f57 || code,
+                    name: name || code,
+                    nav: nav,
+                    estimateNav: nav,
+                    changePercent: (d.f60 || 0) / 100,
+                    change: (d.f169 || 0) / 1000,
+                    timestamp: Date.now(),
+                    price: nav
+                };
+            } catch (error) {
+                lastError = error;
+                console.warn(`东方财富 secid=${secid} 失败:`, error.message);
+            }
         }
         
-        // 解析JSONP
-        let data = null;
-        
-        // jsonpgz({...});
-        const m1 = text.match(/jsonpgz\s*\(\s*(\{[\s\S]*?\})\s*\)/);
-        if (m1) {
-            try { data = JSON.parse(m1[1]); } catch(e) {}
-        }
-        
-        // 直接JSON
-        if (!data) {
-            try { data = JSON.parse(text); } catch(e) {}
-        }
-        
-        if (!data || !data.fundcode) {
-            throw new Error(`无法解析基金 ${code} 的数据`);
-        }
-        
-        const nav = parseFloat(data.dwjz) || 0;
-        const estimateNav = parseFloat(data.gsz) || nav;
-        
-        return {
-            code: data.fundcode,
-            name: data.name || code,
-            nav,
-            estimateNav: estimateNav || nav,
-            estimateTime: data.gztime || '',
-            changePercent: parseFloat(data.gszzl) || 0,
-            timestamp: Date.now(),
-            price: estimateNav || nav
-        };
+        throw new Error(`未找到基金 ${code}。可能原因：1) 代码错误 2) 该基金已清盘或暂停申购`);
     }
     
     // ==================== 统一接口 ====================
@@ -357,7 +351,7 @@ const APIManager = (function() {
             case 'us-stock': return await getFinnhubQuote(code);
             case 'a-stock': return await getBiyingAStockQuote(code);
             case 'hk-stock': return await getYahooHKQuote(code);
-            case 'fund': return await getTiandianFundNav(code);
+            case 'fund': return await getEastMoneyFundNav(code);
             default: throw new Error(`不支持的资产类型: ${type}`);
         }
     }
@@ -380,7 +374,7 @@ const APIManager = (function() {
                 return h.name || code;
             }
             case 'fund': {
-                const f = await getTiandianFundNav(code);
+                const f = await getEastMoneyFundNav(code);
                 return f.name || code;
             }
             default: return code;
@@ -459,7 +453,7 @@ const APIManager = (function() {
         getFinnhubQuote, getFinnhubCompanyProfile,
         getBiyingAStockQuote, getBiyingAStockName,
         getYahooHKQuote, getYahooHKName,
-        getTiandianFundNav,
+        getEastMoneyFundNav,
         getQuote, getName, updateAllPrices
     };
 })();
