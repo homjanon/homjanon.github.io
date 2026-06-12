@@ -282,22 +282,28 @@ const App = (function() {
         
         UIManager.showLoading(`正在刷新 ${asset.code}...`);
         
+        let success = false;
         try {
             const quote = await APIManager.getQuote(asset.type, asset.code);
-            const price = quote.price || quote.estimateNav;
+            const price = quote.price || 0;
             
-            StorageManager.updateAsset(id, {
+            const result = StorageManager.updateAsset(id, {
                 currentPrice: price,
                 lastUpdateTime: Date.now()
             });
             
-            UIManager.showToast('刷新成功', 'success');
-            render();
+            if (!result) throw new Error('保存数据失败');
+            success = true;
         } catch (error) {
             console.error('刷新失败:', error);
             UIManager.showToast(`刷新失败: ${error.message}`, 'error');
         } finally {
             UIManager.hideLoading();
+        }
+        
+        if (success) {
+            render();
+            UIManager.showToast('刷新成功', 'success');
         }
     }
     
@@ -311,35 +317,38 @@ const App = (function() {
         
         UIManager.showLoading('正在刷新所有资产...');
         
+        let successCount = 0;
+        let errorCount = 0;
+        let errors = [];
+        
         try {
-            const { results, errors } = await APIManager.updateAllPrices(assets);
+            const result = await APIManager.updateAllPrices(assets);
+            errors = result.errors;
             
-            // 更新成功的资产
-            results.forEach(result => {
-                StorageManager.updateAsset(result.id, {
-                    currentPrice: result.price,
-                    lastUpdateTime: result.updateTime
+            result.results.forEach(r => {
+                StorageManager.updateAsset(r.id, {
+                    currentPrice: r.price,
+                    lastUpdateTime: r.updateTime
                 });
             });
-            
-            // 显示结果
-            if (errors.length > 0) {
-                UIManager.showToast(`刷新完成，${results.length}成功，${errors.length}失败`, 'info');
-                console.warn('刷新失败的资产:', errors);
-            } else {
-                UIManager.showToast(`刷新完成，共${results.length}个资产`, 'success');
-            }
-            
-            // 更新最后更新时间
+            successCount = result.results.length;
+            errorCount = errors.length;
             UIManager.updateLastUpdateTime();
-            
-            // 重新渲染
-            render();
         } catch (error) {
             console.error('刷新失败:', error);
             UIManager.showToast(`刷新失败: ${error.message}`, 'error');
         } finally {
             UIManager.hideLoading();
+        }
+        
+        if (successCount > 0) {
+            render();
+            if (errorCount > 0) {
+                UIManager.showToast(`刷新完成，${successCount}成功，${errorCount}失败`, 'info');
+                console.warn('刷新失败的资产:', errors);
+            } else {
+                UIManager.showToast(`刷新完成，共${successCount}个资产`, 'success');
+            }
         }
     }
     

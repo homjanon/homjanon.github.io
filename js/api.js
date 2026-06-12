@@ -2,7 +2,7 @@
  * API调用封装模块
  * 数据源：
  * - A股：必盈API (biyingapi.com)
- * - 港股：Yahoo Finance (query1.finance.yahoo.com)
+ * - 港股：Finnhub (优先) → Yahoo Finance + CORS代理 (备选)
  * - 美股：Finnhub API (finnhub.io)
  */
 
@@ -17,7 +17,9 @@ const APIManager = (function() {
     // 默认CORS代理列表（按优先级尝试）
     const DEFAULT_PROXIES = [
         'https://api.codetabs.com/v1/proxy?quest=',
-        'https://api.allorigins.win/raw?url='
+        'https://api.allorigins.win/raw?url=',
+        'https://corsproxy.io/?',
+        'https://proxy.cors.sh/'
     ];
     
     function getConfig() {
@@ -206,6 +208,45 @@ const APIManager = (function() {
         }
     }
     
+    // ==================== Finnhub (港股) ====================
+    
+    // 港股通过Finnhub API查询（与美股共用API Key，零额外成本）
+    async function getFinnhubHKQuote(code) {
+        const config = getConfig();
+        if (!config.finnhubKey) throw new Error('未配置Finnhub API Key');
+        
+        const symbol = `${code.padStart(4, '0')}.HK`;
+        const url = `${API_BASE.finnhub}/quote?symbol=${symbol}&token=${config.finnhubKey}`;
+        const data = await fetchAPI(url);
+        
+        if (!data) throw new Error('返回数据为空');
+        if (data.c === 0 && data.pc === 0) throw new Error(`未找到港股 ${code}，可能Finnhub免费套餐不覆盖该市场`);
+        
+        const price = data.c != null ? data.c : (data.pc || 0);
+        return {
+            price, change: data.d || 0, changePercent: data.dp || 0,
+            high: data.h || price, low: data.l || price,
+            open: data.o || price, previousClose: data.pc || price,
+            timestamp: data.t ? data.t * 1000 : Date.now()
+        };
+    }
+    
+    async function getFinnhubHKName(code) {
+        const config = getConfig();
+        if (!config.finnhubKey) throw new Error('未配置Finnhub API Key');
+        
+        const symbol = `${code.padStart(4, '0')}.HK`;
+        const url = `${API_BASE.finnhub}/stock/profile2?symbol=${symbol}&token=${config.finnhubKey}`;
+        try {
+            const data = await fetchAPI(url);
+            if (data && data.name) return { name: data.name, code };
+            return { name: code, code };
+        } catch (e) {
+            console.warn('Finnhub港股名称查询失败:', e.message);
+            return { name: code, code };
+        }
+    }
+    
     // ==================== 必盈API (A股) ====================
     
     async function getBiyingAStockQuote(code) {
@@ -315,7 +356,12 @@ const APIManager = (function() {
         switch (type) {
             case 'us-stock': return await getFinnhubQuote(code);
             case 'a-stock': return await getBiyingAStockQuote(code);
-            case 'hk-stock': return await getYahooHKQuote(code);
+            case 'hk-stock': {
+                // 优先用 Finnhub（与美股共用Key），失败回退 Yahoo
+                try { return await getFinnhubHKQuote(code); }
+                catch (e) { console.warn('Finnhub港股失败，Yahoo备选:', e.message); }
+                return await getYahooHKQuote(code);
+            }
             default: throw new Error(`不支持的资产类型: ${type}`);
         }
     }
@@ -334,6 +380,10 @@ const APIManager = (function() {
                 return s.name || code;
             }
             case 'hk-stock': {
+                try {
+                    const h = await getFinnhubHKName(code);
+                    if (h.name !== code) return h.name;
+                } catch(e) {}
                 const h = await getYahooHKName(code);
                 return h.name || code;
             }
@@ -409,6 +459,7 @@ const APIManager = (function() {
     
     return {
         getFinnhubQuote, getFinnhubCompanyProfile,
+        getFinnhubHKQuote, getFinnhubHKName,
         getBiyingAStockQuote, getBiyingAStockName,
         getYahooHKQuote, getYahooHKName,
         getQuote, getName, updateAllPrices
