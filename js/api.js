@@ -414,6 +414,50 @@ const APIManager = (function() {
     
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     
+    // ==================== 汇率转换 ====================
+    
+    let exchangeRates = { USD_CNY: 7.2, HKD_CNY: 0.92 }; // 默认汇率
+    
+    // 获取最新汇率（带缓存，每天更新一次）
+    async function fetchExchangeRates() {
+        try {
+            const data = await fetchAPI('https://api.exchangerate-api.com/v4/latest/USD');
+            if (data && data.rates) {
+                const usdCny = data.rates.CNY || 7.2;
+                // HKD via USD
+                const hkdCny = usdCny / (data.rates.HKD || 7.83);
+                exchangeRates = { USD_CNY: usdCny, HKD_CNY: hkdCny };
+                console.log('汇率更新:', `1 USD = ${usdCny.toFixed(4)} CNY, 1 HKD = ${hkdCny.toFixed(4)} CNY`);
+                return exchangeRates;
+            }
+        } catch (e) {
+            console.warn('汇率获取失败，使用默认汇率:', e.message);
+        }
+        return exchangeRates;
+    }
+    
+    function getExchangeRates() { return exchangeRates; }
+    
+    // 金额转换为人民币
+    function toCNY(amount, currency) {
+        if (!amount) return 0;
+        switch (currency) {
+            case 'USD': return amount * exchangeRates.USD_CNY;
+            case 'HKD': return amount * exchangeRates.HKD_CNY;
+            default: return amount; // CNY
+        }
+    }
+    
+    // 获取货币符号
+    function getCurrencySymbol(currency) {
+        switch (currency) { case 'USD': return '$'; case 'HKD': return 'HK$'; default: return '¥'; }
+    }
+    
+    // 获取资产类型的货币
+    function getAssetCurrency(type) {
+        switch (type) { case 'us-stock': return 'USD'; case 'hk-stock': return 'HKD'; default: return 'CNY'; }
+    }
+    
     // ==================== 演示模式 ====================
     
     const DEMO_NAMES = {
@@ -462,6 +506,8 @@ const APIManager = (function() {
         getFinnhubHKQuote, getFinnhubHKName,
         getBiyingAStockQuote, getBiyingAStockName,
         getYahooHKQuote, getYahooHKName,
-        getQuote, getName, updateAllPrices
+        getQuote, getName, updateAllPrices,
+        fetchExchangeRates, getExchangeRates, toCNY,
+        getCurrencySymbol, getAssetCurrency
     };
 })();

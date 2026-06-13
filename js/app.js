@@ -9,18 +9,15 @@ const App = (function() {
     let editingId = null;
     
     // 初始化应用
-    function init() {
+    async function init() {
         console.log('个人投资管理系统初始化...');
-        
-        // 绑定事件
         bindEvents();
         
-        // 渲染初始数据
+        // 获取汇率
+        try { await APIManager.fetchExchangeRates(); } catch(e) {}
+        
         render();
-        
-        // 更新最后更新时间
         UIManager.updateLastUpdateTime();
-        
         console.log('初始化完成');
     }
     
@@ -111,13 +108,23 @@ const App = (function() {
         isEditing = false;
         editingId = null;
         
-        // 重置表单
         document.getElementById('form-asset').reset();
         document.getElementById('modal-title').textContent = '添加资产';
         document.getElementById('query-result').textContent = '';
+        document.getElementById('asset-category').value = '未分类';
         
-        // 显示模态框
+        // 更新品种列表
+        updateCategoryDatalist();
+        
         showModal('modal-asset');
+    }
+    
+    // 更新品种下拉列表
+    function updateCategoryDatalist() {
+        const config = StorageManager.getConfig();
+        const list = document.getElementById('category-list');
+        list.innerHTML = (config.categories || ['红利','纳指100','标普500'])
+            .map(c => `<option value="${c}">`).join('');
     }
     
     // 显示编辑资产模态框
@@ -135,9 +142,12 @@ const App = (function() {
         document.getElementById('asset-type').value = asset.type;
         document.getElementById('asset-code').value = asset.code;
         document.getElementById('asset-name').value = asset.name;
+        document.getElementById('asset-category').value = asset.category || '未分类';
         document.getElementById('asset-cost').value = asset.cost;
         document.getElementById('asset-shares').value = asset.shares;
         document.getElementById('asset-current-price').value = asset.currentPrice || '';
+        
+        updateCategoryDatalist();
         
         document.getElementById('modal-title').textContent = '编辑资产';
         document.getElementById('query-result').textContent = '';
@@ -209,6 +219,7 @@ const App = (function() {
         const type = document.getElementById('asset-type').value;
         const code = document.getElementById('asset-code').value.trim();
         const name = document.getElementById('asset-name').value.trim();
+        const category = document.getElementById('asset-category').value.trim() || '未分类';
         const cost = parseFloat(document.getElementById('asset-cost').value);
         const shares = parseInt(document.getElementById('asset-shares').value);
         const currentPrice = document.getElementById('asset-current-price').value 
@@ -220,13 +231,10 @@ const App = (function() {
             return;
         }
         
+        const currency = APIManager.getAssetCurrency(type);
+        
         const assetData = {
-            type,
-            code,
-            name,
-            cost,
-            shares,
-            currentPrice,
+            type, code, name, category, currency, cost, shares, currentPrice,
             lastUpdateTime: currentPrice ? Date.now() : null
         };
         

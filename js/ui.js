@@ -11,15 +11,28 @@ const UIManager = (function() {
         'us-stock': { name: '美股', badge: '美股', class: 'badge-us-stock' }
     };
     
-    // 格式化货币
-    function formatCurrency(amount, decimals = 2) {
+    // 格式化货币（支持多币种）
+    function formatCurrency(amount, currency = 'CNY', decimals = 2) {
         if (amount === null || amount === undefined) return '--';
-        return new Intl.NumberFormat('zh-CN', {
-            style: 'currency',
-            currency: 'CNY',
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals
-        }).format(amount);
+        const symbol = APIManager.getCurrencySymbol(currency);
+        const locale = currency === 'USD' ? 'en-US' : currency === 'HKD' ? 'zh-HK' : 'zh-CN';
+        try {
+            return new Intl.NumberFormat(locale, {
+                style: 'currency', currency: currency === 'HKD' ? 'HKD' : currency,
+                minimumFractionDigits: decimals, maximumFractionDigits: decimals
+            }).format(amount).replace('CN¥', '¥').replace('HK$', 'HK$');
+        } catch(e) {
+            return `${symbol}${amount.toFixed(decimals)}`;
+        }
+    }
+    
+    // 格式化金额（原币 + 人民币）
+    function formatPriceWithCNY(amount, currency) {
+        if (amount === null || amount === undefined) return '--';
+        const local = formatCurrency(amount, currency, 2);
+        const cny = APIManager.toCNY(amount, currency);
+        if (currency === 'CNY') return local;
+        return `${local} <small style="color:#94a3b8">(≈${formatCurrency(cny, 'CNY', 0)})</small>`;
     }
     
     // 格式化百分比
@@ -41,24 +54,25 @@ const UIManager = (function() {
         });
     }
     
-    // 渲染总览数据
+    // 渲染总览数据（全部换算为人民币）
     function renderOverview(assets) {
         let totalAssets = 0;
         let totalCost = 0;
         let totalProfit = 0;
         
         assets.forEach(asset => {
+            const currency = asset.currency || APIManager.getAssetCurrency(asset.type);
             const currentValue = (asset.currentPrice || 0) * asset.shares;
             const costValue = asset.cost * asset.shares;
-            totalAssets += currentValue;
-            totalCost += costValue;
-            totalProfit += (currentValue - costValue);
+            totalAssets += APIManager.toCNY(currentValue, currency);
+            totalCost += APIManager.toCNY(costValue, currency);
+            totalProfit += APIManager.toCNY(currentValue - costValue, currency);
         });
         
         const totalReturn = totalCost > 0 ? (totalProfit / totalCost * 100) : 0;
         
-        document.getElementById('total-assets').textContent = formatCurrency(totalAssets);
-        document.getElementById('total-profit').textContent = formatCurrency(totalProfit);
+        document.getElementById('total-assets').textContent = formatCurrency(totalAssets, 'CNY');
+        document.getElementById('total-profit').textContent = formatCurrency(totalProfit, 'CNY');
         document.getElementById('total-profit').className = `card-value ${totalProfit >= 0 ? 'positive' : 'negative'}`;
         document.getElementById('total-return').textContent = formatPercent(totalReturn);
         document.getElementById('total-return').className = `card-value ${totalReturn >= 0 ? 'positive' : 'negative'}`;
@@ -87,10 +101,12 @@ const UIManager = (function() {
         // 生成资产卡片HTML
         const cardsHTML = filteredAssets.map(asset => {
             const typeInfo = TYPE_MAP[asset.type] || { name: '未知', badge: '?', class: '' };
+            const currency = asset.currency || APIManager.getAssetCurrency(asset.type);
             const currentValue = (asset.currentPrice || 0) * asset.shares;
             const costValue = asset.cost * asset.shares;
             const profit = currentValue - costValue;
             const profitPercent = costValue > 0 ? (profit / costValue * 100) : 0;
+            const cat = asset.category || '未分类';
             
             return `
                 <div class="asset-card" data-id="${asset.id}">
@@ -99,6 +115,7 @@ const UIManager = (function() {
                             <div class="asset-code">
                                 ${asset.code}
                                 <span class="asset-type-badge ${typeInfo.class}">${typeInfo.badge}</span>
+                                <span class="category-tag">${cat}</span>
                             </div>
                             <div class="asset-name">${asset.name || '未知'}</div>
                         </div>
@@ -114,11 +131,11 @@ const UIManager = (function() {
                     <div class="asset-data">
                         <div class="data-item">
                             <span class="data-label">成本价</span>
-                            <span class="data-value">${formatCurrency(asset.cost)}</span>
+                            <span class="data-value">${formatPriceWithCNY(asset.cost, currency)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">当前价</span>
-                            <span class="data-value ${asset.currentPrice >= asset.cost ? 'positive' : 'negative'}">${formatCurrency(asset.currentPrice)}</span>
+                            <span class="data-value ${asset.currentPrice >= asset.cost ? 'positive' : 'negative'}">${formatPriceWithCNY(asset.currentPrice, currency)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">持有量</span>
@@ -126,11 +143,11 @@ const UIManager = (function() {
                         </div>
                         <div class="data-item">
                             <span class="data-label">市值</span>
-                            <span class="data-value">${formatCurrency(currentValue)}</span>
+                            <span class="data-value">${formatPriceWithCNY(currentValue, currency)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">盈亏</span>
-                            <span class="data-value ${profit >= 0 ? 'positive' : 'negative'}">${formatCurrency(profit)}</span>
+                            <span class="data-value ${profit >= 0 ? 'positive' : 'negative'}">${formatPriceWithCNY(profit, currency)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">收益率</span>
@@ -233,38 +250,43 @@ const UIManager = (function() {
             return;
         }
         
-        // 计算各资产类型市值
-        const typeData = { 'a-stock': 0, 'hk-stock': 0, 'us-stock': 0 };
+        // 计算各市场市值（人民币）
+        const marketDataCNY = { 'A股': 0, '港股': 0, '美股': 0 };
+        const categoryDataCNY = {};
+        
         assets.forEach(a => {
+            const currency = a.currency || APIManager.getAssetCurrency(a.type);
             const value = (a.currentPrice || 0) * a.shares;
-            typeData[a.type] = (typeData[a.type] || 0) + value;
+            const valueCNY = APIManager.toCNY(value, currency);
+            
+            // 按市场分类
+            if (a.type === 'a-stock') marketDataCNY['A股'] += valueCNY;
+            else if (a.type === 'hk-stock') marketDataCNY['港股'] += valueCNY;
+            else if (a.type === 'us-stock') marketDataCNY['美股'] += valueCNY;
+            
+            // 按品种分类
+            const cat = a.category || '未分类';
+            categoryDataCNY[cat] = (categoryDataCNY[cat] || 0) + valueCNY;
         });
         
-        // 计算各市场市值
-        const marketData = { 'A股市场': 0, '港股市场': 0, '美股市场': 0 };
-        assets.forEach(a => {
-            const value = (a.currentPrice || 0) * a.shares;
-            if (a.type === 'a-stock') marketData['A股市场'] += value;
-            else if (a.type === 'hk-stock') marketData['港股市场'] += value;
-            else if (a.type === 'us-stock') marketData['美股市场'] += value;
-        });
-        
-        // 图表颜色（中国股市颜色：涨红跌绿，饼图用品牌色系）
-        const typeColors = ['#2563eb', '#f59e0b', '#10b981'];
         const marketColors = ['#dc2626', '#f59e0b', '#2563eb'];
+        const catColors = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#ec4899', '#14b8a6', '#f97316'];
         
-        // 渲染资产类型饼图
+        // 图1：市场分布（人民币市值）
         renderPieChart('chart-asset-type', {
             labels: ['A股', '港股', '美股'],
-            values: [typeData['a-stock'], typeData['hk-stock'], typeData['us-stock']],
-            colors: typeColors
+            values: [marketDataCNY['A股'], marketDataCNY['港股'], marketDataCNY['美股']],
+            colors: marketColors
         }, 'assetTypeChart');
         
-        // 渲染市场板块饼图
+        // 图2：品种分布（人民币市值）
+        const catEntries = Object.entries(categoryDataCNY)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8);
         renderPieChart('chart-market', {
-            labels: ['A股市场', '港股市场', '美股市场'],
-            values: [marketData['A股市场'], marketData['港股市场'], marketData['美股市场']],
-            colors: marketColors
+            labels: catEntries.map(e => e[0]),
+            values: catEntries.map(e => e[1]),
+            colors: catColors.slice(0, catEntries.length)
         }, 'marketChart');
     }
     

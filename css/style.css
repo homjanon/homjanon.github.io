@@ -703,6 +703,17 @@ body {
     animation: fadeIn 0.3s ease-out;
 }
 
+/* 品种标签 */
+.category-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #e0e7ff;
+    color: #4f46e5;
+    margin-left: 6px;
+    font-weight: 500;
+}
+
 /* 刷新按钮旋转动画 */
 .fa-spin {
     animation: fa-spin 1s infinite linear;
