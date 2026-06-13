@@ -94,9 +94,7 @@ const UIManager = (function() {
     
     // 渲染总览数据（全部换算为人民币）
     function renderOverview(assets) {
-        let totalAssets = 0;
-        let totalCost = 0;
-        let totalProfit = 0;
+        let totalAssets = 0, totalCost = 0, totalProfit = 0, todayPnL = 0;
         
         assets.forEach(asset => {
             const currency = asset.currency || APIManager.getAssetCurrency(asset.type);
@@ -105,11 +103,16 @@ const UIManager = (function() {
             totalAssets += APIManager.toCNY(currentValue, currency);
             totalCost += APIManager.toCNY(costValue, currency);
             totalProfit += APIManager.toCNY(currentValue - costValue, currency);
+            // 当日收益
+            const daily = getDailyPnL(asset);
+            todayPnL += APIManager.toCNY(daily.amount, currency);
         });
         
         const totalReturn = totalCost > 0 ? (totalProfit / totalCost * 100) : 0;
         
         document.getElementById('total-assets').textContent = formatCurrency(totalAssets, 'CNY');
+        document.getElementById('today-pnl').textContent = formatCurrency(todayPnL, 'CNY');
+        document.getElementById('today-pnl').className = `card-value ${todayPnL >= 0 ? 'positive' : 'negative'}`;
         document.getElementById('total-profit').textContent = formatCurrency(totalProfit, 'CNY');
         document.getElementById('total-profit').className = `card-value ${totalProfit >= 0 ? 'positive' : 'negative'}`;
         document.getElementById('total-return').textContent = formatPercent(totalReturn);
@@ -295,8 +298,58 @@ const UIManager = (function() {
     // 饼图实例（用于销毁重绘）
     let assetTypeChart = null;
     let marketChart = null;
+    let historyChart = null;
     
-    // 渲染投资分布饼图
+    // 渲染净值走势折线图
+    function renderHistoryChart() {
+        const section = document.getElementById('history-section');
+        const history = StorageManager.getHistory();
+        if (history.length < 2) {
+            if (section) section.style.display = 'none';
+            return;
+        }
+        if (section) section.style.display = 'block';
+        
+        const canvas = document.getElementById('chart-history');
+        if (!canvas) return;
+        if (historyChart) historyChart.destroy();
+        
+        const ctx = canvas.getContext('2d');
+        historyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: history.map(h => h.date.slice(5)), // MM-DD
+                datasets: [{
+                    label: '总资产 (¥)',
+                    data: history.map(h => h.value),
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37,99,235,0.05)',
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 400 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ¥${ctx.parsed.y.toLocaleString('zh-CN')}`
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 11 } } },
+                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, callback: v => '¥' + (v/10000).toFixed(1) + '万' } }
+                }
+            }
+        });
+    }
     function renderCharts(assets) {
         if (assets.length === 0) {
             destroyCharts();
@@ -437,6 +490,7 @@ const UIManager = (function() {
         renderOverview,
         renderAssetsList,
         renderCharts,
+        renderHistoryChart,
         renderTabs,
         showLoading,
         hideLoading,

@@ -1,0 +1,10 @@
+{
+  "name": "个人投资管理系统",
+  "short_name": "投资管理",
+  "description": "管理A股、港股、美股、基金的持仓和盈亏",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": []
+}

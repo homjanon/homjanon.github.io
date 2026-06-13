@@ -347,9 +347,9 @@ const APIManager = (function() {
     // ==================== 基金 (天天基金网 → CORS代理) ====================
     
     async function getFundNav(code) {
-        // 天天基金网 JSONP → 通过CORS代理获取
+        // 天天基金网仅支持HTTP，HTTPS页面会Mixed Content拦截，必须走代理
         const url = `http://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
-        const text = await fetchText(url);
+        const text = await fetchTextViaProxy(url);
         
         if (!text || text.trim() === '') {
             throw new Error(`未找到基金 ${code}，请检查代码（6位数字，如110022）`);

@@ -38,6 +38,14 @@ const App = (function() {
             showConfigModal();
         });
         
+        // 导出导入
+        document.getElementById('btn-export').addEventListener('click', () => exportData());
+        document.getElementById('btn-import').addEventListener('click', () => document.getElementById('import-file').click());
+        document.getElementById('import-file').addEventListener('change', (e) => {
+            if (e.target.files[0]) importData(e.target.files[0]);
+            e.target.value = '';
+        });
+        
         // 模态框关闭按钮
         document.getElementById('modal-close').addEventListener('click', () => {
             hideModal('modal-asset');
@@ -100,7 +108,24 @@ const App = (function() {
         const assets = StorageManager.getAssets();
         UIManager.renderOverview(assets);
         UIManager.renderCharts(assets);
+        UIManager.renderHistoryChart();
         UIManager.renderAssetsList(assets, currentFilter);
+        // 记录净值快照
+        recordSnapshot(assets);
+    }
+    
+    // 记录净值快照
+    function recordSnapshot(assets) {
+        if (assets.length === 0) return;
+        let total = 0;
+        assets.forEach(a => {
+            const c = a.currency || 'CNY';
+            const v = (a.currentPrice || 0) * a.shares;
+            if (c === 'USD') total += v * APIManager.getExchangeRates().USD_CNY;
+            else if (c === 'HKD') total += v * APIManager.getExchangeRates().HKD_CNY;
+            else total += v;
+        });
+        StorageManager.addHistorySnapshot(total);
     }
     
     // 仅切换筛选（饼图不变）
@@ -380,7 +405,8 @@ const App = (function() {
         const corsProxy = document.getElementById('config-cors-proxy').value.trim();
         const demoMode = document.getElementById('config-demo-mode').checked;
         
-        const config = { finnhubKey, biyingKey, corsProxy, demoMode };
+        const existing = StorageManager.getConfig();
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
@@ -428,6 +454,11 @@ const App = (function() {
     
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', init);
+    
+    // 注册Service Worker (PWA)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
     
     return {
         init,

@@ -141,6 +141,26 @@ const StorageManager = (function() {
         }
     }
     
+    // 历史净值快照
+    function getHistory() {
+        try {
+            const data = localStorage.getItem('investment_history');
+            return data ? JSON.parse(data) : [];
+        } catch (e) { return []; }
+    }
+    function addHistorySnapshot(totalCNY) {
+        const history = getHistory();
+        const today = new Date().toISOString().slice(0, 10);
+        const last = history[history.length - 1];
+        if (last && last.date === today) {
+            last.value = Math.round(totalCNY * 100) / 100;
+        } else {
+            history.push({ date: today, value: Math.round(totalCNY * 100) / 100 });
+            if (history.length > 90) history.shift();
+        }
+        try { localStorage.setItem('investment_history', JSON.stringify(history)); } catch(e) {}
+    }
+    
     // 公开API
     return {
         getAssets,
@@ -154,6 +174,8 @@ const StorageManager = (function() {
         saveConfig,
         clearAllData,
         exportData,
-        importData
+        importData,
+        getHistory,
+        addHistorySnapshot
     };
 })();

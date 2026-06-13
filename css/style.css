@@ -261,8 +261,19 @@ body {
 
 .assets-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 16px;
+}
+
+/* 大屏优化：3-4列 */
+@media (min-width: 1400px) {
+    .assets-list { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1100px) and (max-width: 1399px) {
+    .assets-list { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 640px) {
+    .assets-list { grid-template-columns: 1fr; }
 }
 
 /* 空状态 */
@@ -637,6 +648,23 @@ body {
 }
 
 .chart-wrapper canvas {
+    display: block;
+}
+
+.chart-full {
+    grid-column: 1 / -1;
+}
+
+.chart-wrapper-wide {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    height: 250px;
+    overflow: hidden;
+}
+
+.chart-wrapper-wide canvas {
     display: block;
 }
 
