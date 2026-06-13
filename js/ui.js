@@ -40,23 +40,37 @@ const UIManager = (function() {
         return `${local} <small style="color:#94a3b8">(≈${formatCurrency(cny, 'CNY', 0)})</small>`;
     }
     
-    // 当日盈亏计算（处理美股时区）
+    // 当日盈亏计算（处理各市场非交易日）
     function getDailyPnL(asset) {
         const change = asset.change || 0;
         const amount = change * asset.shares;
         const prevPrice = asset.previousClose;
         const rate = prevPrice && prevPrice > 0 ? (change / prevPrice * 100) : 0;
         
+        const bj = new Date();
+        const day = bj.getDay(); // 0=周日 1=周一 ... 6=周六
+        const hour = bj.getHours();
+        
         if (asset.type === 'us-stock') {
-            const bj = new Date();
-            const day = bj.getDay(); // 0=周日 1=周一 ... 6=周六
-            const hour = bj.getHours();
             if (day === 0) return { amount: 0, rate: 0, label: '周日休市' };
             if (day === 6) return { amount, rate, label: '周五收盘' };
             if (day === 1 && hour < 21) return { amount: 0, rate: 0, label: '开盘前' };
+            return { amount, rate, label: '' };
         }
         
+        // A股/港股/基金：周末休市，当日收益为0
+        if (day === 0 || day === 6) return { amount: 0, rate: 0, label: '周末休市' };
+        
         return { amount, rate, label: '' };
+    }
+    
+    // 创建空状态元素
+    function createEmptyState() {
+        const div = document.createElement('div');
+        div.className = 'empty-state';
+        div.id = 'empty-state';
+        div.innerHTML = '<i class="fas fa-inbox"></i><p>暂无资产</p>';
+        return div;
     }
     
     // 格式化百分比
@@ -106,7 +120,12 @@ const UIManager = (function() {
     // 渲染资产列表
     function renderAssetsList(assets, filterType = 'all') {
         const container = document.getElementById('assets-list');
-        const emptyState = document.getElementById('empty-state');
+        let emptyState = document.getElementById('empty-state');
+        
+        // 重新创建被 innerHTML 销毁的 emptyState
+        if (!emptyState) {
+            emptyState = createEmptyState();
+        }
         
         // 过滤资产
         const filteredAssets = filterType === 'all' 
@@ -115,14 +134,12 @@ const UIManager = (function() {
         
         if (filteredAssets.length === 0) {
             container.innerHTML = '';
-            container.appendChild(emptyState);
             emptyState.style.display = 'block';
+            container.appendChild(emptyState);
             return;
         }
         
-        emptyState.style.display = 'none';
-        
-        // 生成资产卡片HTML
+        // 构建资产卡片
         const cardsHTML = filteredAssets.map(asset => {
             const typeInfo = TYPE_MAP[asset.type] || { name: '未知', badge: '?', class: '' };
             const currency = asset.currency || APIManager.getAssetCurrency(asset.type);
