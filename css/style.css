@@ -699,10 +699,6 @@ body {
     }
 }
 
-.asset-card {
-    animation: fadeIn 0.3s ease-out;
-}
-
 /* 品种标签 */
 .category-tag {
     font-size: 10px;

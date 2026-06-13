@@ -77,7 +77,7 @@ const App = (function() {
             tab.addEventListener('click', () => {
                 currentFilter = tab.dataset.tab;
                 UIManager.renderTabs(currentFilter);
-                render();
+                renderFiltered();
             });
         });
         
@@ -100,6 +100,13 @@ const App = (function() {
         const assets = StorageManager.getAssets();
         UIManager.renderOverview(assets);
         UIManager.renderCharts(assets);
+        UIManager.renderAssetsList(assets, currentFilter);
+    }
+    
+    // 仅切换筛选（饼图不变）
+    function renderFiltered() {
+        const assets = StorageManager.getAssets();
+        UIManager.renderOverview(assets);
         UIManager.renderAssetsList(assets, currentFilter);
     }
     
