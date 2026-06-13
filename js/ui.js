@@ -151,7 +151,7 @@ const UIManager = (function() {
             const daily = getDailyPnL(asset);
             const dailyClass = daily.amount >= 0 ? 'positive' : 'negative';
             const priceClass = (asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative';
-            const dec = asset.type === 'fund' ? 4 : 2;
+            const dec = 4;
             
             return `
                 <div class="asset-card" data-id="${asset.id}">
