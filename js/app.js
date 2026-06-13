@@ -221,7 +221,7 @@ const App = (function() {
         const name = document.getElementById('asset-name').value.trim();
         const category = document.getElementById('asset-category').value.trim() || '未分类';
         const cost = parseFloat(document.getElementById('asset-cost').value);
-        const shares = parseInt(document.getElementById('asset-shares').value);
+        const shares = parseFloat(document.getElementById('asset-shares').value);
         const currentPrice = document.getElementById('asset-current-price').value 
             ? parseFloat(document.getElementById('asset-current-price').value) 
             : null;
@@ -297,6 +297,9 @@ const App = (function() {
             
             const result = StorageManager.updateAsset(id, {
                 currentPrice: price,
+                change: quote.change || 0,
+                changePercent: quote.changePercent || 0,
+                previousClose: quote.previousClose || price,
                 lastUpdateTime: Date.now()
             });
             
@@ -336,6 +339,9 @@ const App = (function() {
             result.results.forEach(r => {
                 StorageManager.updateAsset(r.id, {
                     currentPrice: r.price,
+                    change: r.change || 0,
+                    changePercent: r.changePercent || 0,
+                    previousClose: r.previousClose || r.price,
                     lastUpdateTime: r.updateTime
                 });
             });

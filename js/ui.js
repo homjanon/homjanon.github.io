@@ -12,19 +12,23 @@ const UIManager = (function() {
         'fund': { name: '基金', badge: '基金', class: 'badge-fund' }
     };
     
-    // 格式化货币（支持多币种）
-    function formatCurrency(amount, currency = 'CNY', decimals = 2) {
+    // 格式化货币（支持多币种，去除尾部无意义0）
+    function formatCurrency(amount, currency = 'CNY', maxDec = 2) {
         if (amount === null || amount === undefined) return '--';
+        const fixed = parseFloat(amount.toFixed(maxDec));
         const symbol = APIManager.getCurrencySymbol(currency);
-        const locale = currency === 'USD' ? 'en-US' : currency === 'HKD' ? 'zh-HK' : 'zh-CN';
         try {
+            const locale = currency === 'USD' ? 'en-US' : 'zh-CN';
             return new Intl.NumberFormat(locale, {
                 style: 'currency', currency: currency === 'HKD' ? 'HKD' : currency,
-                minimumFractionDigits: decimals, maximumFractionDigits: decimals
-            }).format(amount).replace('CN¥', '¥').replace('HK$', 'HK$');
-        } catch(e) {
-            return `${symbol}${amount.toFixed(decimals)}`;
-        }
+                minimumFractionDigits: 0, maximumFractionDigits: maxDec
+            }).format(fixed).replace('CN¥', '¥');
+        } catch(e) { return `${symbol}${fixed}`; }
+    }
+    
+    function formatNumber(n, maxDec = 4) {
+        if (n === null || n === undefined) return '--';
+        return parseFloat(parseFloat(n).toFixed(maxDec)).toString();
     }
     
     // 格式化金额（原币 + 人民币）
@@ -34,6 +38,25 @@ const UIManager = (function() {
         const cny = APIManager.toCNY(amount, currency);
         if (currency === 'CNY') return local;
         return `${local} <small style="color:#94a3b8">(≈${formatCurrency(cny, 'CNY', 0)})</small>`;
+    }
+    
+    // 当日盈亏计算（处理美股时区）
+    function getDailyPnL(asset) {
+        const change = asset.change || 0;
+        const amount = change * asset.shares;
+        const prevPrice = asset.previousClose;
+        const rate = prevPrice && prevPrice > 0 ? (change / prevPrice * 100) : 0;
+        
+        if (asset.type === 'us-stock') {
+            const bj = new Date();
+            const day = bj.getDay(); // 0=周日 1=周一 ... 6=周六
+            const hour = bj.getHours();
+            if (day === 0) return { amount: 0, rate: 0, label: '周日休市' };
+            if (day === 6) return { amount, rate, label: '周五收盘' };
+            if (day === 1 && hour < 21) return { amount: 0, rate: 0, label: '开盘前' };
+        }
+        
+        return { amount, rate, label: '' };
     }
     
     // 格式化百分比
@@ -108,6 +131,9 @@ const UIManager = (function() {
             const profit = currentValue - costValue;
             const profitPercent = costValue > 0 ? (profit / costValue * 100) : 0;
             const cat = asset.category || '未分类';
+            const daily = getDailyPnL(asset);
+            const dailyClass = daily.amount >= 0 ? 'positive' : 'negative';
+            const priceClass = (asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative';
             
             return `
                 <div class="asset-card" data-id="${asset.id}">
@@ -136,22 +162,30 @@ const UIManager = (function() {
                         </div>
                         <div class="data-item">
                             <span class="data-label">当前价</span>
-                            <span class="data-value ${asset.currentPrice >= asset.cost ? 'positive' : 'negative'}">${formatPriceWithCNY(asset.currentPrice, currency)}</span>
+                            <span class="data-value ${priceClass}">${formatPriceWithCNY(asset.currentPrice, currency)}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">当日收益${daily.label ? '('+daily.label+')' : ''}</span>
+                            <span class="data-value ${dailyClass}">${formatPriceWithCNY(daily.amount, currency)}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">当日收益率</span>
+                            <span class="data-value ${dailyClass}">${formatPercent(daily.rate)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">持有量</span>
-                            <span class="data-value">${asset.shares}</span>
+                            <span class="data-value">${formatNumber(asset.shares, 4)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">市值</span>
                             <span class="data-value">${formatPriceWithCNY(currentValue, currency)}</span>
                         </div>
                         <div class="data-item">
-                            <span class="data-label">盈亏</span>
+                            <span class="data-label">累计盈亏</span>
                             <span class="data-value ${profit >= 0 ? 'positive' : 'negative'}">${formatPriceWithCNY(profit, currency)}</span>
                         </div>
                         <div class="data-item">
-                            <span class="data-label">收益率</span>
+                            <span class="data-label">累计收益率</span>
                             <span class="data-value ${profitPercent >= 0 ? 'positive' : 'negative'}">${formatPercent(profitPercent)}</span>
                         </div>
                     </div>

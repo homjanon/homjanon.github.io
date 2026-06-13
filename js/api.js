@@ -438,9 +438,10 @@ const APIManager = (function() {
                 const quote = await getQuote(asset.type, asset.code);
                 results.push({
                     id: asset.id,
-                    price: quote.price || quote.estimateNav || 0,
+                    price: quote.price || 0,
                     change: quote.change || 0,
                     changePercent: quote.changePercent || 0,
+                    previousClose: quote.previousClose || quote.price || 0,
                     updateTime: quote.timestamp || Date.now()
                 });
                 await sleep(300);
