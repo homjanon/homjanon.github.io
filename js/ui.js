@@ -32,9 +32,9 @@ const UIManager = (function() {
     }
     
     // 格式化金额（原币 + 人民币）
-    function formatPriceWithCNY(amount, currency) {
+    function formatPriceWithCNY(amount, currency, maxDec = 2) {
         if (amount === null || amount === undefined) return '--';
-        const local = formatCurrency(amount, currency, 2);
+        const local = formatCurrency(amount, currency, maxDec);
         const cny = APIManager.toCNY(amount, currency);
         if (currency === 'CNY') return local;
         return `${local} <small style="color:#94a3b8">(≈${formatCurrency(cny, 'CNY', 0)})</small>`;
@@ -151,6 +151,7 @@ const UIManager = (function() {
             const daily = getDailyPnL(asset);
             const dailyClass = daily.amount >= 0 ? 'positive' : 'negative';
             const priceClass = (asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative';
+            const dec = asset.type === 'fund' ? 4 : 2;
             
             return `
                 <div class="asset-card" data-id="${asset.id}">
@@ -175,15 +176,15 @@ const UIManager = (function() {
                     <div class="asset-data">
                         <div class="data-item">
                             <span class="data-label">成本价</span>
-                            <span class="data-value">${formatPriceWithCNY(asset.cost, currency)}</span>
+                            <span class="data-value">${formatPriceWithCNY(asset.cost, currency, dec)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">当前价</span>
-                            <span class="data-value ${priceClass}">${formatPriceWithCNY(asset.currentPrice, currency)}</span>
+                            <span class="data-value ${priceClass}">${formatPriceWithCNY(asset.currentPrice, currency, dec)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">当日收益${daily.label ? '('+daily.label+')' : ''}</span>
-                            <span class="data-value ${dailyClass}">${formatPriceWithCNY(daily.amount, currency)}</span>
+                            <span class="data-value ${dailyClass}">${formatPriceWithCNY(daily.amount, currency, dec)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">当日收益率</span>
@@ -195,11 +196,11 @@ const UIManager = (function() {
                         </div>
                         <div class="data-item">
                             <span class="data-label">市值</span>
-                            <span class="data-value">${formatPriceWithCNY(currentValue, currency)}</span>
+                            <span class="data-value">${formatPriceWithCNY(currentValue, currency, dec)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">累计盈亏</span>
-                            <span class="data-value ${profit >= 0 ? 'positive' : 'negative'}">${formatPriceWithCNY(profit, currency)}</span>
+                            <span class="data-value ${profit >= 0 ? 'positive' : 'negative'}">${formatPriceWithCNY(profit, currency, dec)}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">累计收益率</span>
