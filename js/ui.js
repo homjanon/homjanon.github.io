@@ -388,6 +388,7 @@ const UIManager = (function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
+                animation: { duration: 400 },
                 plugins: {
                     legend: {
                         position: 'bottom',

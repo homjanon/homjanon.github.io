@@ -632,11 +632,12 @@ body {
     width: 100%;
     max-width: 300px;
     margin: 0 auto;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
 }
 
 .chart-wrapper canvas {
-    width: 100% !important;
-    height: auto !important;
+    display: block;
 }
 
 /* 响应式设计 */
