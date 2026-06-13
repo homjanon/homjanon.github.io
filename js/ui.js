@@ -8,7 +8,8 @@ const UIManager = (function() {
     const TYPE_MAP = {
         'a-stock': { name: 'A股', badge: 'A股', class: 'badge-a-stock' },
         'hk-stock': { name: '港股', badge: '港股', class: 'badge-hk-stock' },
-        'us-stock': { name: '美股', badge: '美股', class: 'badge-us-stock' }
+        'us-stock': { name: '美股', badge: '美股', class: 'badge-us-stock' },
+        'fund': { name: '基金', badge: '基金', class: 'badge-fund' }
     };
     
     // 格式化货币（支持多币种）
@@ -251,7 +252,7 @@ const UIManager = (function() {
         }
         
         // 计算各市场市值（人民币）
-        const marketDataCNY = { 'A股': 0, '港股': 0, '美股': 0 };
+        const marketDataCNY = { 'A股': 0, '港股': 0, '美股': 0, '基金': 0 };
         const categoryDataCNY = {};
         
         assets.forEach(a => {
@@ -263,19 +264,20 @@ const UIManager = (function() {
             if (a.type === 'a-stock') marketDataCNY['A股'] += valueCNY;
             else if (a.type === 'hk-stock') marketDataCNY['港股'] += valueCNY;
             else if (a.type === 'us-stock') marketDataCNY['美股'] += valueCNY;
+            else if (a.type === 'fund') marketDataCNY['基金'] += valueCNY;
             
             // 按品种分类
             const cat = a.category || '未分类';
             categoryDataCNY[cat] = (categoryDataCNY[cat] || 0) + valueCNY;
         });
         
-        const marketColors = ['#dc2626', '#f59e0b', '#2563eb'];
+        const marketColors = ['#dc2626', '#f59e0b', '#2563eb', '#8b5cf6'];
         const catColors = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#ec4899', '#14b8a6', '#f97316'];
         
         // 图1：市场分布（人民币市值）
         renderPieChart('chart-asset-type', {
-            labels: ['A股', '港股', '美股'],
-            values: [marketDataCNY['A股'], marketDataCNY['港股'], marketDataCNY['美股']],
+            labels: ['A股', '港股', '美股', '基金'],
+            values: [marketDataCNY['A股'], marketDataCNY['港股'], marketDataCNY['美股'], marketDataCNY['基金']],
             colors: marketColors
         }, 'assetTypeChart');
         

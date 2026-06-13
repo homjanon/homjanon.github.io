@@ -80,6 +80,9 @@
                 <button class="tab" data-tab="us-stock">
                     <i class="fas fa-chart-line"></i> 美股
                 </button>
+                <button class="tab" data-tab="fund">
+                    <i class="fas fa-coins"></i> 基金
+                </button>
             </div>
         </section>
 
@@ -123,6 +126,7 @@
                             <option value="a-stock">A股</option>
                             <option value="hk-stock">港股</option>
                             <option value="us-stock">美股</option>
+                            <option value="fund">基金</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -187,9 +191,9 @@
                         <small class="form-hint">用于获取A股和港股数据，官网：<a href="https://www.biyingapi.com" target="_blank">biyingapi.com</a></small>
                     </div>
                     <div class="form-group">
-                        <label for="config-cors-proxy">CORS代理URL（港股Yahoo备选）</label>
-                        <input type="text" id="config-cors-proxy" placeholder="https://api.codetabs.com/v1/proxy?quest=">
-                        <small class="form-hint">港股优先用Finnhub；若Finnhub不可用时则通过代理调用Yahoo Finance。可自行搭建</small>
+                        <label for="config-cors-proxy">CORS代理URL（港股Yahoo + 基金）</label>
+                        <input type="text" id="config-cors-proxy" placeholder="填入你的Cloudflare Worker地址">
+                        <small class="form-hint">港股Yahoo备选 + 基金天天基金网都需要代理。填入你部署的Worker地址</small>
                     </div>
                     <div class="form-group">
                         <label>

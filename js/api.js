@@ -344,6 +344,41 @@ const APIManager = (function() {
         return { name: code, code };
     }
     
+    // ==================== 基金 (天天基金网 → CORS代理) ====================
+    
+    async function getFundNav(code) {
+        // 天天基金网 JSONP → 通过CORS代理获取
+        const url = `http://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
+        const text = await fetchText(url);
+        
+        if (!text || text.trim() === '') {
+            throw new Error(`未找到基金 ${code}，请检查代码（6位数字，如110022）`);
+        }
+        
+        // 解析 JSONP: jsonpgz({...});
+        let data = null;
+        const m = text.match(/jsonpgz\s*\(\s*(\{[\s\S]*?\})\s*\)/);
+        if (m) { try { data = JSON.parse(m[1]); } catch(e) {} }
+        if (!data) { try { data = JSON.parse(text); } catch(e) {} }
+        
+        if (!data || !data.fundcode) {
+            throw new Error(`无法解析基金 ${code} 的数据`);
+        }
+        
+        const nav = parseFloat(data.dwjz) || 0;
+        const estNav = parseFloat(data.gsz) || nav;
+        
+        return {
+            code: data.fundcode,
+            name: data.name || code,
+            nav,
+            estimateNav: estNav || nav,
+            changePercent: parseFloat(data.gszzl) || 0,
+            timestamp: Date.now(),
+            price: estNav || nav
+        };
+    }
+    
     // ==================== 统一接口 ====================
     
     async function getQuote(type, code) {
@@ -362,6 +397,7 @@ const APIManager = (function() {
                 catch (e) { console.warn('Finnhub港股失败，Yahoo备选:', e.message); }
                 return await getYahooHKQuote(code);
             }
+            case 'fund': return await getFundNav(code);
             default: throw new Error(`不支持的资产类型: ${type}`);
         }
     }
@@ -386,6 +422,10 @@ const APIManager = (function() {
                 } catch(e) {}
                 const h = await getYahooHKName(code);
                 return h.name || code;
+            }
+            case 'fund': {
+                const f = await getFundNav(code);
+                return f.name || code;
             }
             default: return code;
         }
@@ -506,6 +546,7 @@ const APIManager = (function() {
         getFinnhubHKQuote, getFinnhubHKName,
         getBiyingAStockQuote, getBiyingAStockName,
         getYahooHKQuote, getYahooHKName,
+        getFundNav,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency
