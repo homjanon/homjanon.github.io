@@ -716,6 +716,30 @@ body {
     }
 }
 
+/* 手机端紧凑优化 */
+@media (max-width: 640px) {
+    .header h1 { font-size: 15px; }
+    .header { padding: 10px 12px; }
+    .btn { padding: 6px 10px; font-size: 12px; }
+    .btn-sm { padding: 3px 6px; font-size: 11px; }
+    .overview-card { padding: 12px 14px; }
+    .card-value { font-size: 18px; }
+    .card-label { font-size: 11px; }
+    .asset-card { padding: 12px 14px; }
+    .asset-code { font-size: 12px; }
+    .asset-name { font-size: 11px; }
+    .data-value { font-size: 13px; }
+    .data-label { font-size: 10px; }
+    .asset-data { gap: 8px; margin-top: 8px; }
+    .asset-footer { font-size: 10px; margin-top: 8px; padding-top: 8px; }
+    .category-tag { font-size: 9px; padding: 1px 5px; }
+    .asset-type-badge { font-size: 9px; padding: 1px 4px; }
+    .modal-content { margin: 8px; }
+    .modal-header { padding: 14px 16px; }
+    .modal-body { padding: 16px; }
+    .form-group { margin-bottom: 14px; }
+}
+
 /* 动画 */
 @keyframes fadeIn {
     from {

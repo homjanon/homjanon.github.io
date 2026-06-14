@@ -344,6 +344,64 @@ const APIManager = (function() {
         return { name: code, code };
     }
     
+    // ==================== 腾讯财经 (A股/港股/美股，免API Key) ====================
+    
+    function getTencentCode(type, code) {
+        switch (type) {
+            case 'a-stock': return (code.startsWith('6') ? 'sh' : 'sz') + code;
+            case 'hk-stock': return 'hk' + code;
+            case 'us-stock': return 'us' + code.toUpperCase().replace('.', '');
+            default: return code;
+        }
+    }
+    
+    async function getTencentQuote(type, code) {
+        const tcode = getTencentCode(type, code);
+        const url = `https://qt.gtimg.cn/q=${tcode}`;
+        const text = await fetchText(url);
+        
+        if (!text || text.trim() === '') throw new Error(`腾讯财经未返回 ${code} 数据`);
+        
+        // 解析格式：v_sh600519="1~贵州茅台~600519~1600.50~..."
+        const pattern = new RegExp(`v_${tcode.replace('.', '\\\\.')}="([^"]*)"`);
+        const m = text.match(pattern);
+        if (!m) throw new Error(`无法解析 ${code} 数据`);
+        
+        const fields = m[1].split('~');
+        // 字段索引：1=名称, 3=当前价, 4=昨收, 5=今开, 6=成交量, 32=涨跌幅, 33=最高, 34=最低, 43=涨跌额
+        const name = fields[1] || code;
+        const price = parseFloat(fields[3]) || 0;
+        const prevClose = parseFloat(fields[4]) || price;
+        const change = parseFloat(fields[43] || fields[32]) || (price - prevClose);
+        const changePercent = parseFloat(fields[32]) || 0;
+        
+        if (!price) throw new Error(`腾讯财经 ${code} 无价格`);
+        
+        return {
+            price, change, changePercent,
+            high: parseFloat(fields[33]) || price,
+            low: parseFloat(fields[34]) || price,
+            open: parseFloat(fields[5]) || price,
+            previousClose: prevClose,
+            timestamp: Date.now()
+        };
+    }
+    
+    async function getTencentName(type, code) {
+        const tcode = getTencentCode(type, code);
+        const url = `https://qt.gtimg.cn/q=${tcode}`;
+        try {
+            const text = await fetchText(url);
+            const pattern = new RegExp(`v_${tcode.replace('.', '\\\\.')}="([^"]*)"`);
+            const m = text.match(pattern);
+            if (m) {
+                const fields = m[1].split('~');
+                return fields[1] || code;
+            }
+        } catch (e) {}
+        return code;
+    }
+    
     // ==================== 基金 (天天基金网 → CORS代理) ====================
     
     async function getFundNav(code) {
@@ -389,9 +447,10 @@ const APIManager = (function() {
         }
         
         switch (type) {
-            case 'us-stock': return await getFinnhubQuote(code);
-            case 'a-stock': return await getBiyingAStockQuote(code);
+            case 'us-stock': return config.useTencent ? await getTencentQuote(type, code) : await getFinnhubQuote(code);
+            case 'a-stock': return config.useTencent ? await getTencentQuote(type, code) : await getBiyingAStockQuote(code);
             case 'hk-stock': {
+                if (config.useTencent) return await getTencentQuote(type, code);
                 // 优先用 Finnhub（与美股共用Key），失败回退 Yahoo
                 try { return await getFinnhubHKQuote(code); }
                 catch (e) { console.warn('Finnhub港股失败，Yahoo备选:', e.message); }
@@ -408,14 +467,17 @@ const APIManager = (function() {
         
         switch (type) {
             case 'us-stock': {
+                if (config.useTencent) return await getTencentName(type, code);
                 const p = await getFinnhubCompanyProfile(code);
                 return p.name || code.toUpperCase();
             }
             case 'a-stock': {
+                if (config.useTencent) return await getTencentName(type, code);
                 const s = await getBiyingAStockName(code);
                 return s.name || code;
             }
             case 'hk-stock': {
+                if (config.useTencent) return await getTencentName(type, code);
                 try {
                     const h = await getFinnhubHKName(code);
                     if (h.name !== code) return h.name;
@@ -547,6 +609,7 @@ const APIManager = (function() {
         getFinnhubHKQuote, getFinnhubHKName,
         getBiyingAStockQuote, getBiyingAStockName,
         getYahooHKQuote, getYahooHKName,
+        getTencentQuote, getTencentName,
         getFundNav,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
