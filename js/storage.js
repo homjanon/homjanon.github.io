@@ -108,6 +108,7 @@ const StorageManager = (function() {
             corsProxy: 'https://api.codetabs.com/v1/proxy?quest=',
             demoMode: true,
             useTencent: false,
+            useAkShare: false,
             categories: ['红利', '纳指100', '标普500']
         };
     }

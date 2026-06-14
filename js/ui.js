@@ -109,15 +109,19 @@ const UIManager = (function() {
         });
         
         const totalReturn = totalCost > 0 ? (totalProfit / totalCost * 100) : 0;
+        const prevAssets = totalAssets - todayPnL;
+        const todayReturn = prevAssets > 0 ? (todayPnL / prevAssets * 100) : 0;
         
         document.getElementById('total-assets').textContent = formatCurrency(totalAssets, 'CNY');
+        document.getElementById('total-count').textContent = assets.length;
         document.getElementById('today-pnl').textContent = formatCurrency(todayPnL, 'CNY');
         document.getElementById('today-pnl').className = `card-value ${todayPnL >= 0 ? 'positive' : 'negative'}`;
+        document.getElementById('today-return').textContent = formatPercent(todayReturn);
+        document.getElementById('today-return').className = `card-value ${todayReturn >= 0 ? 'positive' : 'negative'}`;
         document.getElementById('total-profit').textContent = formatCurrency(totalProfit, 'CNY');
         document.getElementById('total-profit').className = `card-value ${totalProfit >= 0 ? 'positive' : 'negative'}`;
         document.getElementById('total-return').textContent = formatPercent(totalReturn);
         document.getElementById('total-return').className = `card-value ${totalReturn >= 0 ? 'positive' : 'negative'}`;
-        document.getElementById('total-count').textContent = assets.length;
     }
     
     // 渲染资产列表

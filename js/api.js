@@ -447,6 +447,67 @@ const APIManager = (function() {
         return code;
     }
     
+    // ==================== AkShare (新浪数据源，全市场含基金) ====================
+    
+    function getAkShareCode(type, code) {
+        switch (type) {
+            case 'a-stock': return (code.startsWith('6') ? 'sh' : 'sz') + code;
+            case 'hk-stock': return 'hk' + normHK(code).padStart(5, '0');
+            case 'us-stock': return 'gb_' + code.toLowerCase().replace('.', '');
+            case 'fund': return 'f_' + code;
+            default: return code;
+        }
+    }
+    
+    async function getAkShareQuote(type, code) {
+        const scode = getAkShareCode(type, code);
+        const url = `https://hq.sinajs.cn/list=${scode}`;
+        let text;
+        try { text = await fetchGBK(url); }
+        catch (e) { if (isCORSError(e)) text = await fetchGBKviaProxy(url); else throw e; }
+        
+        if (!text || text.trim() === '') throw new Error(`新浪未返回 ${code} 数据`);
+        
+        const m = text.match(/"([^"]*)"/);
+        if (!m) throw new Error(`无法解析 ${code} 数据`);
+        
+        const fields = m[1].split(',');
+        if (fields.length < 2) throw new Error(`${code} 数据不完整`);
+        
+        if (type === 'fund') {
+            const name = fields[0] || code;
+            const nav = parseFloat(fields[1]) || 0;
+            const estNav = parseFloat(fields[2]) || nav;
+            const prevNav = parseFloat(fields[4]) || nav;
+            const change = estNav - prevNav;
+            const changePercent = prevNav > 0 ? (change / prevNav * 100) : 0;
+            return { code, name, nav, estimateNav: estNav, price: estNav, change, changePercent, previousClose: prevNav, timestamp: Date.now() };
+        }
+        
+        // 股票
+        const name = fields[0] || code;
+        const price = parseFloat(fields[3]) || 0;
+        const prevClose = parseFloat(fields[2]) || price;
+        const change = price - prevClose;
+        const changePercent = prevClose > 0 ? (change / prevClose * 100) : 0;
+        
+        if (!price) throw new Error(`新浪 ${code} 无价格`);
+        
+        return {
+            price, change, changePercent,
+            high: parseFloat(fields[4]) || price,
+            low: parseFloat(fields[5]) || price,
+            open: parseFloat(fields[1]) || price,
+            previousClose: prevClose,
+            timestamp: Date.now()
+        };
+    }
+    
+    async function getAkShareName(type, code) {
+        try { const q = await getAkShareQuote(type, code); return q.name || code; }
+        catch (e) { return code; }
+    }
+    
     // ==================== 基金 (天天基金网 → CORS代理) ====================
     
     async function getFundNav(code) {
@@ -491,6 +552,8 @@ const APIManager = (function() {
             return getDemoQuote(type, code);
         }
         
+        if (config.useAkShare) return await getAkShareQuote(type, code);
+        
         switch (type) {
             case 'us-stock': return config.useTencent ? await getTencentQuote(type, code) : await getFinnhubQuote(code);
             case 'a-stock': return config.useTencent ? await getTencentQuote(type, code) : await getBiyingAStockQuote(code);
@@ -509,6 +572,7 @@ const APIManager = (function() {
     async function getName(type, code) {
         const config = getConfig();
         if (config.demoMode) return getDemoName(type, code);
+        if (config.useAkShare) return await getAkShareName(type, code);
         
         switch (type) {
             case 'us-stock': {
@@ -655,6 +719,7 @@ const APIManager = (function() {
         getBiyingAStockQuote, getBiyingAStockName,
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
+        getAkShareQuote, getAkShareName,
         getFundNav,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
