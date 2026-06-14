@@ -53,11 +53,19 @@ const APIManager = (function() {
     
     // 通过代理URL获取
     function proxyURL(proxy, url) {
-        if (proxy.includes('codetabs.com') || proxy.includes('allorigins.win') || proxy.includes('?')) {
-            // 已知代理格式或已含 ?quest= / ?url=
+        // codetabs / allorigins：需要编码的 ?param= 格式
+        if (proxy.includes('codetabs.com') || proxy.includes('allorigins.win')) {
             return proxy + encodeURIComponent(url);
         }
-        // Cloudflare Worker 等：追加 ?url=
+        // Cloudflare Worker 等显式 ?url= 格式
+        if (proxy.includes('?url=')) {
+            return proxy + encodeURIComponent(url);
+        }
+        // corsproxy.io 风格：仅 ? 分隔，URL 原样（不能编码）
+        if (proxy.includes('?')) {
+            return proxy + url;
+        }
+        // 纯域名：追加 ?url=
         if (proxy.endsWith('/')) proxy = proxy.slice(0, -1);
         return proxy + '?url=' + encodeURIComponent(url);
     }
