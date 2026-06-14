@@ -478,22 +478,23 @@ const APIManager = (function() {
     // ==================== 基金 (天天基金网 → CORS代理) ====================
     
     // 基金JSONP直连（无需代理）
+    // 天天基金 JSONP 固定回调名为 jsonpgz，不能用自定义名称
     function getFundJSONP(code) {
         return new Promise((resolve, reject) => {
-            const cb = '_fundCb' + Date.now();
             const script = document.createElement('script');
             const timeout = setTimeout(() => {
                 cleanup();
                 reject(new Error(`基金 ${code} 请求超时`));
             }, 8000);
             
+            const previous = window.jsonpgz;
             const cleanup = () => {
                 clearTimeout(timeout);
-                delete window[cb];
+                window.jsonpgz = previous;
                 if (script.parentNode) script.parentNode.removeChild(script);
             };
             
-            window[cb] = function(data) {
+            window.jsonpgz = function(data) {
                 cleanup();
                 if (!data || !data.fundcode) {
                     reject(new Error(`未找到基金 ${code}`));
