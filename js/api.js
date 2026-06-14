@@ -53,19 +53,12 @@ const APIManager = (function() {
     
     // 通过代理URL获取
     function proxyURL(proxy, url) {
-        // codetabs / allorigins：需要编码的 ?param= 格式
-        if (proxy.includes('codetabs.com') || proxy.includes('allorigins.win')) {
+        // 已知含 ?param= 的代理 → 编码拼接
+        if (proxy.includes('codetabs.com') || proxy.includes('allorigins.win')
+            || proxy.includes('?quest=') || proxy.includes('?url=') || proxy.includes('?')) {
             return proxy + encodeURIComponent(url);
         }
-        // Cloudflare Worker 等显式 ?url= 格式
-        if (proxy.includes('?url=')) {
-            return proxy + encodeURIComponent(url);
-        }
-        // corsproxy.io 风格：仅 ? 分隔，URL 原样（不能编码）
-        if (proxy.includes('?')) {
-            return proxy + url;
-        }
-        // 纯域名：追加 ?url=
+        // 纯域名如 workers.dev → 追加 ?url=
         if (proxy.endsWith('/')) proxy = proxy.slice(0, -1);
         return proxy + '?url=' + encodeURIComponent(url);
     }
@@ -532,9 +525,7 @@ const APIManager = (function() {
             case 'a-stock': return config.useTencent ? await getTencentQuote(type, code) : await getBiyingAStockQuote(code);
             case 'hk-stock': {
                 if (config.useTencent) return await getTencentQuote(type, code);
-                // 必盈API (与A股共用Key)，失败回退 Yahoo
-                try { return await getBiyingHKStockQuote(code); }
-                catch (e) { console.warn('必盈港股失败，Yahoo备选:', e.message); }
+                // 港股通过Yahoo Finance + 代理
                 return await getYahooHKQuote(code);
             }
             case 'fund': return await getFundNav(code);
@@ -559,10 +550,6 @@ const APIManager = (function() {
             }
             case 'hk-stock': {
                 if (config.useTencent) return await getTencentName(type, code);
-                try {
-                    const h = await getBiyingHKStockName(code);
-                    if (h.name !== code) return h.name;
-                } catch(e) {}
                 const h = await getYahooHKName(code);
                 return h.name || code;
             }
