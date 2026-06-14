@@ -105,7 +105,7 @@ const StorageManager = (function() {
         return {
             finnhubKey: '',
             biyingKey: '',
-            corsProxy: 'https://api.codetabs.com/v1/proxy?quest=',
+            corsProxy: 'https://corsproxy.io/?',
             demoMode: true,
             useTencent: false,
             categories: ['红利', '纳指100', '标普500']
