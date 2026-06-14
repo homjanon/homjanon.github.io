@@ -108,10 +108,10 @@ const App = (function() {
             const typeSelect = document.getElementById('asset-type');
             if (/^[A-Z]+$/.test(code)) {
                 typeSelect.value = 'us-stock';
+            } else if (/^\d{6}$/.test(code)) {
+                typeSelect.value = 'a-stock';  // 6位数字默认A股，可手动切基金
             } else if (/^\d{1,5}$/.test(code)) {
                 typeSelect.value = 'hk-stock';
-            } else if (/^\d{6}$/.test(code)) {
-                // 6位数字可能是A股或基金，不自动切换
             }
         });
     }
