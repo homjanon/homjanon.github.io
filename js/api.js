@@ -444,71 +444,6 @@ const APIManager = (function() {
         return code;
     }
     
-    // ==================== AkShare (东方财富，全市场含基金) ====================
-    
-    function getEastMoneySecid(type, code) {
-        switch (type) {
-            case 'a-stock': return (code.startsWith('6') ? '1' : '0') + '.' + code;
-            case 'hk-stock': return '116.' + normHK(code).padStart(5, '0');
-            case 'us-stock': return '105.' + code.toUpperCase().replace('.', '');
-            case 'fund': return '0.' + code;
-            default: return '0.' + code;
-        }
-    }
-    
-    async function getAkShareQuote(type, code) {
-        // 股票走东方财富push2，基金走天天基金网，均通过代理
-        if (type === 'fund') {
-            const url = `http://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
-            const text = await fetchTextViaProxy(url);
-            if (!text || text.trim() === '') throw new Error(`未找到基金 ${code}`);
-            let data = null;
-            const m = text.match(/jsonpgz\s*\(\s*(\{[\s\S]*?\})\s*\)/);
-            if (m) { try { data = JSON.parse(m[1]); } catch(e) {} }
-            if (!data) { try { data = JSON.parse(text); } catch(e) {} }
-            if (!data || !data.fundcode) throw new Error(`无法解析基金 ${code}`);
-            const nav = parseFloat(data.dwjz) || 0;
-            const estNav = parseFloat(data.gsz) || nav;
-            return {
-                code: data.fundcode, name: data.name || code,
-                nav, estimateNav: estNav, price: estNav,
-                changePercent: parseFloat(data.gszzl) || 0,
-                change: (estNav - nav), previousClose: nav,
-                timestamp: Date.now()
-            };
-        }
-        
-        // 股票：东方财富 push2 API
-        const secid = getEastMoneySecid(type, code);
-        const url = `https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f2,f3,f4,f12,f14,f15,f16,f17,f18`;
-        const text = await fetchTextViaProxy(url);
-        
-        if (!text || text.trim() === '') throw new Error(`东方财富未返回 ${code} 数据`);
-        
-        const json = JSON.parse(text);
-        const d = json.data;
-        if (!d) throw new Error(`东方财富 ${code} 无数据`);
-        
-        const price = parseFloat(d.f2) || 0;
-        const prevClose = parseFloat(d.f18) || price;
-        if (!price) throw new Error(`东方财富 ${code} 无价格`);
-        
-        return {
-            name: d.f14 || code, price, previousClose: prevClose,
-            change: parseFloat(d.f4) || (price - prevClose),
-            changePercent: parseFloat(d.f3) || 0,
-            high: parseFloat(d.f15) || price,
-            low: parseFloat(d.f16) || price,
-            open: parseFloat(d.f17) || price,
-            timestamp: Date.now()
-        };
-    }
-    
-    async function getAkShareName(type, code) {
-        try { const q = await getAkShareQuote(type, code); return q.name || code; }
-        catch (e) { return code; }
-    }
-    
     // ==================== 基金 (天天基金网 → CORS代理) ====================
     
     async function getFundNav(code) {
@@ -553,8 +488,6 @@ const APIManager = (function() {
             return getDemoQuote(type, code);
         }
         
-        if (config.useAkShare) return await getAkShareQuote(type, code);
-        
         switch (type) {
             case 'us-stock': return config.useTencent ? await getTencentQuote(type, code) : await getFinnhubQuote(code);
             case 'a-stock': return config.useTencent ? await getTencentQuote(type, code) : await getBiyingAStockQuote(code);
@@ -573,7 +506,6 @@ const APIManager = (function() {
     async function getName(type, code) {
         const config = getConfig();
         if (config.demoMode) return getDemoName(type, code);
-        if (config.useAkShare) return await getAkShareName(type, code);
         
         switch (type) {
             case 'us-stock': {
@@ -720,7 +652,6 @@ const APIManager = (function() {
         getBiyingAStockQuote, getBiyingAStockName,
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
-        getAkShareQuote, getAkShareName,
         getFundNav,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
