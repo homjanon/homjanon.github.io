@@ -53,16 +53,13 @@ const APIManager = (function() {
     
     // 通过代理URL获取
     function proxyURL(proxy, url) {
-        // codetabs格式：?quest=URL
-        if (proxy.includes('codetabs.com')) {
+        if (proxy.includes('codetabs.com') || proxy.includes('allorigins.win') || proxy.includes('?')) {
+            // 已知代理格式或已含 ?quest= / ?url=
             return proxy + encodeURIComponent(url);
         }
-        // allorigins格式：?url=URL
-        if (proxy.includes('allorigins.win')) {
-            return proxy + encodeURIComponent(url);
-        }
-        // 其他代理：假设直接在代理URL后拼接
-        return proxy + encodeURIComponent(url);
+        // Cloudflare Worker 等：追加 ?url=
+        if (proxy.endsWith('/')) proxy = proxy.slice(0, -1);
+        return proxy + '?url=' + encodeURIComponent(url);
     }
     
     // 通用fetch：直接调用 + CORS代理fallback
