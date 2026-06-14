@@ -210,6 +210,7 @@ const App = (function() {
         document.getElementById('config-cors-proxy').value = config.corsProxy || '';
         document.getElementById('config-demo-mode').checked = config.demoMode !== false;
         document.getElementById('config-use-tencent').checked = config.useTencent === true;
+        document.getElementById('config-use-eastmoney-fund').checked = config.useEastMoneyFund === true;
         
         showModal('modal-config');
     }
@@ -419,9 +420,10 @@ const App = (function() {
         const corsProxy = document.getElementById('config-cors-proxy').value.trim();
         const demoMode = document.getElementById('config-demo-mode').checked;
         const useTencent = document.getElementById('config-use-tencent').checked;
+        const useEastMoneyFund = document.getElementById('config-use-eastmoney-fund').checked;
         
         const existing = StorageManager.getConfig();
-        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent };
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent, useEastMoneyFund };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
