@@ -450,8 +450,9 @@ const UIManager = (function() {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            padding: 16,
+                            usePointStyle: false,
                             boxWidth: 4,
+                            padding: 16,
                             font: { size: 12 },
                             generateLabels: function(chart) {
                                 const data = chart.data;
