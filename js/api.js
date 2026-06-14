@@ -509,7 +509,7 @@ const APIManager = (function() {
                 });
             };
             
-            script.src = `http://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
+            script.src = `https://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
             script.onerror = () => { cleanup(); reject(new Error(`基金 ${code} 加载失败`)); };
             document.head.appendChild(script);
         });
@@ -566,7 +566,12 @@ const APIManager = (function() {
                 // 港股通过Yahoo Finance + 代理
                 return await getYahooHKQuote(code);
             }
-            case 'fund': return await getFundNav(code);
+            case 'fund': {
+                // 优先JSONP直连（HTTPS），失败回退代理
+                try { return await getFundJSONP(code); }
+                catch (e) { console.log('基金JSONP失败，回退代理:', e.message); }
+                return await getFundNav(code);
+            }
             default: throw new Error(`不支持的资产类型: ${type}`);
         }
     }
@@ -592,8 +597,9 @@ const APIManager = (function() {
                 return h.name || code;
             }
             case 'fund': {
-                const f = await getFundNav(code);
-                return f.name || code;
+                try { const f = await getFundJSONP(code); return f.name || code; } catch(e) {}
+                try { const f = await getFundNav(code); return f.name || code; } catch(e) {}
+                return code;
             }
             default: return code;
         }
