@@ -552,86 +552,73 @@ const APIManager = (function() {
     
     // ==================== 基金 (东方财富历史净值，天天基金备选) ====================
     
-    function getEastMoneyFundNav(code) {
+    // 注入 <script> 并读取全局变量（无需代理、无需 CORS）
+    function injectScript(url, varName, timeoutMs = 8000) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            const timeout = setTimeout(() => {
-                cleanup();
-                reject(new Error(`东方财富基金 ${code} 请求超时`));
-            }, 8000);
+            const previous = window[varName];
+            delete window[varName];
             
-            const prevApidata = window.apidata;
-            const cleanup = () => {
-                clearTimeout(timeout);
-                window.apidata = prevApidata;
+            const timer = setTimeout(() => {
+                cleanup();
+                reject(new Error(`加载超时: ${url.substring(0, 60)}`));
+            }, timeoutMs);
+            
+            function cleanup() {
+                clearTimeout(timer);
                 if (script.parentNode) script.parentNode.removeChild(script);
+            }
+            
+            script.onload = () => {
+                const val = window[varName];
+                window[varName] = previous;
+                cleanup();
+                resolve(val);
             };
             
-            // 使用回调重写来监听变量赋值
-            let _data = null;
-            Object.defineProperty(window, 'apidata', {
-                get: () => _data,
-                set: (val) => {
-                    _data = val;
-                    cleanup();
-                    if (!val || !val.content) {
-                        reject(new Error(`东方财富未返回基金 ${code} 数据`));
-                        return;
-                    }
-                    // 解析HTML表格获取净值
-                    const rowMatch = val.content.match(/<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/);
-                    if (!rowMatch) {
-                        reject(new Error(`无法解析基金 ${code} 净值`));
-                        return;
-                    }
-                    const nav = parseFloat(rowMatch[2]) || 0;
-                    const changeStr = rowMatch[4].replace('%', '').trim();
-                    const changePercent = parseFloat(changeStr) || 0;
-                    resolve({
-                        code, name: code,
-                        nav, estimateNav: nav, price: nav,
-                        changePercent, change: (nav * changePercent / 100),
-                        timestamp: Date.now()
-                    });
-                },
-                configurable: true
-            });
+            script.onerror = () => {
+                window[varName] = previous;
+                cleanup();
+                reject(new Error(`加载失败: ${url.substring(0, 60)}`));
+            };
             
-            script.src = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=1`;
-            script.onerror = () => { cleanup(); reject(new Error(`东方财富基金 ${code} 加载失败`)); };
+            script.src = url;
             document.head.appendChild(script);
         });
     }
     
-    function getEastMoneyFundName(code) {
-        return new Promise((resolve) => {
-            const script = document.createElement('script');
-            const timeout = setTimeout(() => {
-                cleanup();
-                resolve(code);
-            }, 8000);
-            
-            const prevName = window.fS_name;
-            const cleanup = () => {
-                clearTimeout(timeout);
-                if (script.parentNode) script.parentNode.removeChild(script);
-            };
-            
-            window.fS_name = undefined;
-            Object.defineProperty(window, 'fS_name', {
-                get: () => prevName,
-                set: (val) => {
-                    cleanup();
-                    window.fS_name = prevName;
-                    resolve(val || code);
-                },
-                configurable: true
-            });
-            
-            script.src = `https://fund.eastmoney.com/pingzhongdata/${code}.js`;
-            script.onerror = () => { cleanup(); resolve(code); };
-            document.head.appendChild(script);
-        });
+    async function getEastMoneyFundNav(code) {
+        const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=1`;
+        const apidata = await injectScript(url, 'apidata');
+        
+        if (!apidata || !apidata.content) {
+            throw new Error(`东方财富未返回基金 ${code} 数据`);
+        }
+        // 解析HTML表格: <tr><td>日期</td><td>净值</td><td>累计</td><td>日增长率</td>
+        const rowMatch = apidata.content.match(/<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/);
+        if (!rowMatch) throw new Error(`无法解析基金 ${code} 净值`);
+        
+        const nav = parseFloat(rowMatch[2]) || 0;
+        const changeStr = (rowMatch[4] || '').replace('%', '').trim();
+        const changePercent = parseFloat(changeStr) || 0;
+        
+        return {
+            code, name: code,
+            nav, estimateNav: nav, price: nav,
+            changePercent, change: (nav * changePercent / 100),
+            timestamp: Date.now()
+        };
+    }
+    
+    async function getEastMoneyFundName(code) {
+        try {
+            const fS_name = await injectScript(
+                `https://fund.eastmoney.com/pingzhongdata/${code}.js`, 'fS_name', 5000
+            );
+            return fS_name || code;
+        } catch (e) {
+            return code;
+        }
     }
     
     // ==================== 统一接口 ====================
