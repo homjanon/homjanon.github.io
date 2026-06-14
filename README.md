@@ -1,71 +1,81 @@
 # 个人投资管理系统
 
-纯前端单页应用，管理 **A股、港股、美股、基金** 的持仓和盈亏，支持实时行情查询。数据保存在浏览器本地，无需后端。
+纯前端单页应用，管理 **A股、港股、美股、基金** 的持仓和盈亏。大部分数据源零配置直连，开箱即用。
+
+## 数据源（默认，零配置）
+
+| 资产 | 数据源 | 方式 |
+|------|--------|------|
+| A股 | 腾讯财经 qt.gtimg.cn | HTTPS 直连 |
+| 港股 | 腾讯财经 qt.gtimg.cn | HTTPS 直连 |
+| 美股 | 腾讯财经 qt.gtimg.cn | HTTPS 直连 |
+| 基金 | 天天基金 fundgz.1234567.com.cn | JSONP 直连 |
+
+> ⚙️ 设置中取消勾选即可切换为备用数据源：Finnhub(美股) + 必盈API(A股) + CORS代理(港股+基金)
 
 ## 功能
 
 - **四市场覆盖**：A股 / 港股 / 美股 / 场外基金
-- **智能识别**：输入代码自动判断市场类型（字母→美股，1-5位数字→港股）
+- **零配置开箱即用**：默认腾讯财经 + 天天基金 JSONP，无需 API Key
+- **智能识别**：输入代码自动判断市场（字母→美股，1-5位数字→港股，6位→A股）
 - **港股模糊输入**：`3968` 和 `03968` 都能查到招商银行
-- **多币种显示**：美股 $、港股 HK$、A股/基金 ¥，总览统一换算人民币
-- **当日收益**：每个资产和总览显示当日收益额/收益率，美股做时区修正
+- **多币种显示**：美股 $ / 港股 HK$ / A股和基金 ¥，总览统一换算人民币
+- **当日收益**：含时区修正，非交易时段置灰
 - **自定义品种分类**：默认红利/纳指100/标普500，可自行添加
-- **净值走势图**：每日自动记录总资产快照，折线图展示（最多90天）
-- **饼图**：市场分布 + 品种分布（按汇率换算为人民币）
-- **数据导出/导入**：一键备份恢复，防丢失
-- **PWA 支持**：手机可添加到主屏幕，离线可用
-- **响应式**：桌面端 4 列，平板 2-3 列，手机 1 列
-- **演示模式**：无 API Key 时使用模拟数据完整体验
-
-## 数据源
-
-| 资产类型 | 默认数据源 | 费用 | 需要代理 |
-|----------|-----------|------|----------|
-| A股 | 腾讯财经 (qt.gtimg.cn) | 免费 | 否 |
-| 港股 | 腾讯财经 (qt.gtimg.cn) | 免费 | 否 |
-| 美股 | 腾讯财经 (qt.gtimg.cn) | 免费 | 否 |
-| 基金 | 天天基金网 (fundgz.1234567.com.cn) | 免费 | **是** |
-
-> 在 ⚙️ 设置中可关闭"腾讯财经"，改回 Finnhub / 必盈 API。
+- **净值走势图**：每日自动快照（最多 90 天折线图）
+- **饼图**：市场分布 + 品种分布（汇率换算后用人民币）
+- **数据导出/导入**：JSON 备份恢复
+- **PWA**：可添加到主屏幕，离线缓存
+- **响应式**：桌面 4 列 / 平板 2-3 列 / 手机 1 列
 
 ## 快速开始
 
-### GitHub Pages 部署
+### GitHub Pages
 
-1. 创建一个 Public 仓库，上传所有文件
-2. Settings → Pages → Source 选 `main` 分支 → Save
-3. 访问 `https://你的用户名.github.io/仓库名/`
+1. 创建 Public 仓库，上传所有文件
+2. Settings → Pages → 选 `main` 分支 → Save
+3. 打开 `https://你的用户名.github.io/仓库名/`，直接使用
 
 ### 本地运行
 
-直接用浏览器打开 `index.html`，或：
-
 ```bash
 python -m http.server 8080
-# http://localhost:8080
+# 或直接用浏览器打开 index.html
 ```
 
-## 配置
+## 设置
 
-### 腾讯财经（推荐，零配置）
+打开 ⚙️ 设置页面，默认模式无需任何配置。
 
-打开 ⚙️ 设置 → 勾选「使用腾讯财经」。A股/港股/美股行情直接可用，无需 API Key。
+### 默认模式（推荐）
 
-### Cloudflare Worker 代理（基金必需）
+勾选「腾讯财经 + 天天基金」，A股/港股/美股/基金全部零配置直连。
 
-1. 注册 [Cloudflare Workers](https://workers.cloudflare.com)（免费，每日 10 万次请求）
-2. 创建 Worker，贴入以下代码：
+### 备用模式
+
+取消勾选后启用，需自行申请 API Key：
+
+| 配置项 | 用途 | 获取方式 |
+|--------|------|---------|
+| Finnhub API Key | 美股 | [finnhub.io](https://finnhub.io) 免费注册 |
+| 必盈API Licence | A股 | [biyingapi.com](https://www.biyingapi.com) |
+| CORS代理URL | 港股 + 基金 | 默认 corsproxy.io，或自建 Worker |
+
+### CORS 代理
+
+基金 JSONP 直连优先，失败时自动回退到代理。默认使用 corsproxy.io，也可填入自建 Cloudflare Worker：
 
 ```javascript
+// proxy-worker.js
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const target = url.searchParams.get('url') || url.searchParams.get('quest');
-    if (!target) return new Response('Missing url parameter', { status: 400 });
-    const resp = await fetch(decodeURIComponent(target), {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
+    const target = url.searchParams.get('url');
+    if (!target) return new Response('Missing ?url=', { status: 400 });
+    const resp = await fetch(target, {
+      headers: { 'Referer': new URL(target).origin + '/' }
     });
-    return new Response(await resp.text(), {
+    return new Response(resp.body, {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': resp.headers.get('Content-Type') || 'text/plain'
@@ -75,36 +85,26 @@ export default {
 };
 ```
 
-3. 部署后获得 `https://xxx.workers.dev` 地址
-4. 在 ⚙️ 设置的 **CORS代理URL** 中填入 `https://xxx.workers.dev/?url=`
+## 使用
 
-### 备用 API（可选）
-
-| 配置项 | 用途 | 获取方式 |
-|--------|------|---------|
-| Finnhub API Key | 美股 + 港股（腾讯财经备选） | [finnhub.io](https://finnhub.io) 免费注册 |
-| 必盈API Licence | A股（腾讯财经备选） | [biyingapi.com](https://www.biyingapi.com) |
-
-## 使用说明
-
-1. 点击「添加资产」
-2. 输入代码（自动识别市场），点击「查询」获取名称和最新价
-3. 填写成本价、持有数量，选择投资品种，保存
-4. 资产卡片上的「刷新」按钮更新单个价格
-5. 顶部「刷新数据」批量刷新全部持仓
-6. 📥 导出 / 📤 导入 可备份和恢复数据
+1. 点击「添加资产」，输入代码，自动识别市场
+2. 点击「查询」获取名称和最新价
+3. 填写成本价和持有数量，保存
+4. 卡片上的「刷新」更新单个资产
+5. 顶部「刷新数据」批量刷新
+6. 📥 导出 / 📤 导入 备份恢复数据
 
 ## 文件结构
 
 ```
 ├── index.html          # 主页
 ├── manifest.json       # PWA 配置
-├── sw.js              # Service Worker（离线缓存）
+├── sw.js              # Service Worker
 ├── proxy-worker.js    # Cloudflare Worker 代码
 ├── css/style.css      # 样式
 ├── js/
 │   ├── storage.js     # 本地存储
-│   ├── api.js         # API 调用（Finnhub/必盈/腾讯/天天基金）
+│   ├── api.js         # API（腾讯/天天基金/必盈/Finnhub）
 │   ├── ui.js          # UI 渲染
 │   └── app.js         # 主逻辑
 └── README.md
@@ -112,7 +112,6 @@ export default {
 
 ## 注意事项
 
-- 数据保存在浏览器 localStorage，清缓存会丢失，请定期导出备份
-- 基金需要通过 Cloudflare Worker 代理访问天天基金网
-- 免费 API 数据可能有延迟，仅供参考
-- **免责声明：本工具不构成投资建议**
+- 数据保存在 localStorage，清缓存会丢失，请定期导出
+- 腾讯财经和基金 JSONP 均为免费公开接口，不保证永久可用
+- **免责声明：不构成投资建议，仅供参考**
