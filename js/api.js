@@ -16,10 +16,7 @@ const APIManager = (function() {
     
     // 默认CORS代理列表（按优先级尝试）
     const DEFAULT_PROXIES = [
-        'https://api.codetabs.com/v1/proxy?quest=',
-        'https://api.allorigins.win/raw?url=',
-        'https://corsproxy.io/?',
-        'https://proxy.cors.sh/'
+        'https://corsproxy.io/?'
     ];
     
     function getConfig() {
