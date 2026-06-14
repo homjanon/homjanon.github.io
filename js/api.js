@@ -172,6 +172,42 @@ const APIManager = (function() {
         throw new Error(`所有CORS代理均失败，请更换代理URL或自行部署代理`);
     }
     
+    // 获取GBK编码的文本（腾讯财经等）
+    async function fetchGBK(url) {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        const decoder = new TextDecoder('gbk');
+        return decoder.decode(buffer);
+    }
+    
+    async function fetchGBKviaProxy(url) {
+        // 通过代理获取GBK文本 — 代理返回的可能仍是GBK字节
+        // 尝试直接用fetchGBK风格的解码
+        const proxies = getProxyList();
+        let lastError = null;
+        for (const proxy of proxies) {
+            try {
+                const pUrl = proxyURL(proxy, url);
+                const response = await fetch(pUrl);
+                if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+                const buffer = await response.arrayBuffer();
+                const decoder = new TextDecoder('gbk');
+                let text = decoder.decode(buffer);
+                if (proxy.includes('codetabs.com')) {
+                    try {
+                        const data = JSON.parse(text);
+                        text = data.contents || text;
+                    } catch (e) {}
+                }
+                return text;
+            } catch (e) {
+                lastError = e;
+            }
+        }
+        throw new Error(`所有代理均失败: ${lastError?.message}`);
+    }
+    
     // ==================== Finnhub API (美股) ====================
     
     async function getFinnhubQuote(symbol) {
@@ -358,7 +394,9 @@ const APIManager = (function() {
     async function getTencentQuote(type, code) {
         const tcode = getTencentCode(type, code);
         const url = `https://qt.gtimg.cn/q=${tcode}`;
-        const text = await fetchText(url);
+        let text;
+        try { text = await fetchGBK(url); }
+        catch (e) { if (isCORSError(e)) text = await fetchGBKviaProxy(url); else throw e; }
         
         if (!text || text.trim() === '') throw new Error(`腾讯财经未返回 ${code} 数据`);
         
@@ -391,7 +429,9 @@ const APIManager = (function() {
         const tcode = getTencentCode(type, code);
         const url = `https://qt.gtimg.cn/q=${tcode}`;
         try {
-            const text = await fetchText(url);
+            let text;
+            try { text = await fetchGBK(url); }
+            catch (e) { if (isCORSError(e)) text = await fetchGBKviaProxy(url); else throw e; }
             const pattern = new RegExp(`v_${tcode.replace('.', '\\\\.')}="([^"]*)"`);
             const m = text.match(pattern);
             if (m) {
