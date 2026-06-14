@@ -451,8 +451,7 @@ const UIManager = (function() {
                         position: 'bottom',
                         labels: {
                             padding: 16,
-                            usePointStyle: true,
-                            pointStyleWidth: 10,
+                            boxWidth: 4,
                             font: { size: 12 },
                             generateLabels: function(chart) {
                                 const data = chart.data;
