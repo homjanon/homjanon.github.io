@@ -101,6 +101,19 @@ const App = (function() {
                 hideModal('modal-config');
             }
         });
+        
+        // 输入代码时自动识别市场
+        document.getElementById('asset-code').addEventListener('input', (e) => {
+            const code = e.target.value.trim().toUpperCase();
+            const typeSelect = document.getElementById('asset-type');
+            if (/^[A-Z]+$/.test(code)) {
+                typeSelect.value = 'us-stock';
+            } else if (/^\d{1,5}$/.test(code)) {
+                typeSelect.value = 'hk-stock';
+            } else if (/^\d{6}$/.test(code)) {
+                // 6位数字可能是A股或基金，不自动切换
+            }
+        });
     }
     
     // 渲染界面

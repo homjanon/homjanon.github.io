@@ -246,12 +246,17 @@ const APIManager = (function() {
     
     // ==================== Finnhub (港股) ====================
     
+    // 标准化港股代码：3968/03968 → 3968
+    function normHK(code) {
+        return String(parseInt(code, 10));
+    }
+    
     // 港股通过Finnhub API查询（与美股共用API Key，零额外成本）
     async function getFinnhubHKQuote(code) {
         const config = getConfig();
         if (!config.finnhubKey) throw new Error('未配置Finnhub API Key');
         
-        const symbol = `${code.padStart(4, '0')}.HK`;
+        const symbol = `${normHK(code).padStart(4, '0')}.HK`;
         const url = `${API_BASE.finnhub}/quote?symbol=${symbol}&token=${config.finnhubKey}`;
         const data = await fetchAPI(url);
         
@@ -271,7 +276,7 @@ const APIManager = (function() {
         const config = getConfig();
         if (!config.finnhubKey) throw new Error('未配置Finnhub API Key');
         
-        const symbol = `${code.padStart(4, '0')}.HK`;
+        const symbol = `${normHK(code).padStart(4, '0')}.HK`;
         const url = `${API_BASE.finnhub}/stock/profile2?symbol=${symbol}&token=${config.finnhubKey}`;
         try {
             const data = await fetchAPI(url);
@@ -321,7 +326,7 @@ const APIManager = (function() {
     // ==================== 港股 (Yahoo Finance → CORS代理) ====================
     
     async function getYahooHKQuote(code) {
-        const paddedCode = code.padStart(4, '0');
+        const paddedCode = normHK(code).padStart(4, '0');
         const symbol = `${paddedCode}.HK`;
         const url = `${API_BASE.yahooChart}/${symbol}?interval=1d&range=1d`;
         
@@ -350,7 +355,7 @@ const APIManager = (function() {
     }
     
     async function getYahooHKName(code) {
-        const paddedCode = code.padStart(4, '0');
+        const paddedCode = normHK(code).padStart(4, '0');
         const symbol = `${paddedCode}.HK`;
         
         // 尝试v7 quote获取名称
@@ -385,7 +390,7 @@ const APIManager = (function() {
     function getTencentCode(type, code) {
         switch (type) {
             case 'a-stock': return (code.startsWith('6') ? 'sh' : 'sz') + code;
-            case 'hk-stock': return 'hk' + code;
+            case 'hk-stock': return 'hk' + normHK(code).padStart(5, '0');
             case 'us-stock': return 'us' + code.toUpperCase().replace('.', '');
             default: return code;
         }
