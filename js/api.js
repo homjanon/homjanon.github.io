@@ -566,7 +566,7 @@ const APIManager = (function() {
                 // 港股通过Yahoo Finance + 代理
                 return await getYahooHKQuote(code);
             }
-            case 'fund': return config.useTencent ? await getFundJSONP(code) : await getFundNav(code);
+            case 'fund': return await getFundNav(code);
             default: throw new Error(`不支持的资产类型: ${type}`);
         }
     }
@@ -592,11 +592,8 @@ const APIManager = (function() {
                 return h.name || code;
             }
             case 'fund': {
-                if (config.useTencent) {
-                    try { const f = await getFundJSONP(code); return f.name || code; } catch(e) {}
-                }
-                try { const f = await getFundNav(code); return f.name || code; } catch(e) {}
-                return code;
+                const f = await getFundNav(code);
+                return f.name || code;
             }
             default: return code;
         }
