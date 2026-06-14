@@ -320,7 +320,38 @@ const APIManager = (function() {
         }
     }
     
-    // ==================== 港股 (Yahoo Finance → CORS代理) ====================
+    // 港股通过必盈API (与A股共用Licence)
+    async function getBiyingHKStockQuote(code) {
+        const config = getConfig();
+        if (!config.biyingKey) throw new Error('未配置必盈API Licence');
+        const padded = normHK(code).padStart(5, '0');
+        const url = `${API_BASE.biying}/hk/hslhq/${padded}/${config.biyingKey}`;
+        const data = await fetchAPI(url);
+        if (!data || data.p === undefined) throw new Error(`未找到港股 ${code}`);
+        return {
+            price: data.p, changePercent: data.pc || 0,
+            change: data.ud || (data.p - data.yc),
+            high: data.h || data.p, low: data.l || data.p,
+            open: data.o || data.p, previousClose: data.yc || data.p,
+            volume: data.v, timestamp: Date.now()
+        };
+    }
+    
+    async function getBiyingHKStockName(code) {
+        const config = getConfig();
+        if (!config.biyingKey) return { name: code, code };
+        try {
+            const padded = normHK(code).padStart(5, '0');
+            const url = `${API_BASE.biying}/hk/sszjmx/${padded}/${config.biyingKey}`;
+            const data = await fetchAPI(url);
+            return { name: data.name || code, code };
+        } catch (e) {
+            console.warn('获取港股名称失败:', e.message);
+            return { name: code, code };
+        }
+    }
+    
+    // ==================== 港股 (Yahoo Finance → CORS代理，备选) ====================
     
     async function getYahooHKQuote(code) {
         const paddedCode = normHK(code).padStart(4, '0');
@@ -493,9 +524,9 @@ const APIManager = (function() {
             case 'a-stock': return config.useTencent ? await getTencentQuote(type, code) : await getBiyingAStockQuote(code);
             case 'hk-stock': {
                 if (config.useTencent) return await getTencentQuote(type, code);
-                // 优先用 Finnhub（与美股共用Key），失败回退 Yahoo
-                try { return await getFinnhubHKQuote(code); }
-                catch (e) { console.warn('Finnhub港股失败，Yahoo备选:', e.message); }
+                // 必盈API (与A股共用Key)，失败回退 Yahoo
+                try { return await getBiyingHKStockQuote(code); }
+                catch (e) { console.warn('必盈港股失败，Yahoo备选:', e.message); }
                 return await getYahooHKQuote(code);
             }
             case 'fund': return await getFundNav(code);
@@ -521,7 +552,7 @@ const APIManager = (function() {
             case 'hk-stock': {
                 if (config.useTencent) return await getTencentName(type, code);
                 try {
-                    const h = await getFinnhubHKName(code);
+                    const h = await getBiyingHKStockName(code);
                     if (h.name !== code) return h.name;
                 } catch(e) {}
                 const h = await getYahooHKName(code);
@@ -650,6 +681,7 @@ const APIManager = (function() {
         getFinnhubQuote, getFinnhubCompanyProfile,
         getFinnhubHKQuote, getFinnhubHKName,
         getBiyingAStockQuote, getBiyingAStockName,
+        getBiyingHKStockQuote, getBiyingHKStockName,
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
         getFundNav,
