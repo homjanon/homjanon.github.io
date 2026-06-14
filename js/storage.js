@@ -106,8 +106,8 @@ const StorageManager = (function() {
             finnhubKey: '',
             biyingKey: '',
             corsProxy: 'https://corsproxy.io/?',
-            demoMode: true,
-            useTencent: false,
+            demoMode: false,
+            useTencent: true,
             categories: ['红利', '纳指100', '标普500']
         };
     }

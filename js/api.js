@@ -477,6 +477,45 @@ const APIManager = (function() {
     
     // ==================== 基金 (天天基金网 → CORS代理) ====================
     
+    // 基金JSONP直连（无需代理）
+    function getFundJSONP(code) {
+        return new Promise((resolve, reject) => {
+            const cb = '_fundCb' + Date.now();
+            const script = document.createElement('script');
+            const timeout = setTimeout(() => {
+                cleanup();
+                reject(new Error(`基金 ${code} 请求超时`));
+            }, 8000);
+            
+            const cleanup = () => {
+                clearTimeout(timeout);
+                delete window[cb];
+                if (script.parentNode) script.parentNode.removeChild(script);
+            };
+            
+            window[cb] = function(data) {
+                cleanup();
+                if (!data || !data.fundcode) {
+                    reject(new Error(`未找到基金 ${code}`));
+                    return;
+                }
+                const nav = parseFloat(data.dwjz) || 0;
+                const estNav = parseFloat(data.gsz) || nav;
+                resolve({
+                    code: data.fundcode, name: data.name || code,
+                    nav, estimateNav: estNav,
+                    changePercent: parseFloat(data.gszzl) || 0,
+                    timestamp: Date.now(), price: estNav
+                });
+            };
+            
+            script.src = `http://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
+            script.onerror = () => { cleanup(); reject(new Error(`基金 ${code} 加载失败`)); };
+            document.head.appendChild(script);
+        });
+    }
+    
+    // 基金走代理（备用）
     async function getFundNav(code) {
         // 天天基金网仅支持HTTP，HTTPS页面会Mixed Content拦截，必须走代理
         const url = `http://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
@@ -527,7 +566,7 @@ const APIManager = (function() {
                 // 港股通过Yahoo Finance + 代理
                 return await getYahooHKQuote(code);
             }
-            case 'fund': return await getFundNav(code);
+            case 'fund': return config.useTencent ? await getFundJSONP(code) : await getFundNav(code);
             default: throw new Error(`不支持的资产类型: ${type}`);
         }
     }
@@ -553,8 +592,11 @@ const APIManager = (function() {
                 return h.name || code;
             }
             case 'fund': {
-                const f = await getFundNav(code);
-                return f.name || code;
+                if (config.useTencent) {
+                    try { const f = await getFundJSONP(code); return f.name || code; } catch(e) {}
+                }
+                try { const f = await getFundNav(code); return f.name || code; } catch(e) {}
+                return code;
             }
             default: return code;
         }
@@ -678,7 +720,7 @@ const APIManager = (function() {
         getBiyingHKStockQuote, getBiyingHKStockName,
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
-        getFundNav,
+        getFundJSONP, getFundNav,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency
