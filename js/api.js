@@ -508,9 +508,11 @@ const APIManager = (function() {
                 const gszVal = parseFloat(data.gsz);
                 const estNav = gszVal > 0 ? gszVal : nav;
                 const changePct = parseFloat(data.gszzl) || 0;
+                // 日期：有实时估值时用估值时间，否则用结算日期
+                const navDate = gszVal > 0 ? (data.gztime || data.jzrq || '') : (data.jzrq || '');
                 resolve({
                     code: data.fundcode, name: data.name || code,
-                    nav, estimateNav: estNav, navDate: data.jzrq || '',
+                    nav, estimateNav: estNav, navDate,
                     change: estNav - nav,
                     changePercent: changePct,
                     timestamp: Date.now(), price: estNav
@@ -546,13 +548,14 @@ const APIManager = (function() {
         const nav = parseFloat(data.dwjz) || 0;
         const gszVal = parseFloat(data.gsz);
         const estNav = gszVal > 0 ? gszVal : nav;
+        const navDate = gszVal > 0 ? (data.gztime || data.jzrq || '') : (data.jzrq || '');
         
         return {
             code: data.fundcode,
             name: data.name || code,
             nav, estimateNav: estNav || nav,
             change: estNav - nav,
-            navDate: data.jzrq || '',
+            navDate,
             changePercent: parseFloat(data.gszzl) || 0,
             timestamp: Date.now(),
             price: estNav || nav
