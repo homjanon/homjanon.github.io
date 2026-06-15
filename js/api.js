@@ -509,7 +509,7 @@ const APIManager = (function() {
                 const estNav = gszVal > 0 ? gszVal : nav;
                 resolve({
                     code: data.fundcode, name: data.name || code,
-                    nav, estimateNav: estNav,
+                    nav, estimateNav: estNav, navDate: data.jzrq || '',
                     changePercent: parseFloat(data.gszzl) || 0,
                     timestamp: Date.now(), price: estNav
                 });
@@ -548,8 +548,8 @@ const APIManager = (function() {
         return {
             code: data.fundcode,
             name: data.name || code,
-            nav,
-            estimateNav: estNav || nav,
+            nav, estimateNav: estNav || nav,
+            navDate: data.jzrq || '',
             changePercent: parseFloat(data.gszzl) || 0,
             timestamp: Date.now(),
             price: estNav || nav
@@ -605,12 +605,13 @@ const APIManager = (function() {
         if (!rowMatch) throw new Error(`无法解析基金 ${code} 净值`);
         
         const nav = parseFloat(rowMatch[2]) || 0;
+        const navDate = (rowMatch[1] || '').trim();
         const changeStr = (rowMatch[4] || '').replace('%', '').trim();
         const changePercent = parseFloat(changeStr) || 0;
         
         return {
             code, name: code,
-            nav, estimateNav: nav, price: nav,
+            nav, estimateNav: nav, price: nav, navDate,
             changePercent, change: (nav * changePercent / 100),
             timestamp: Date.now()
         };
@@ -645,13 +646,14 @@ const APIManager = (function() {
                 return await getYahooHKQuote(code);
             }
             case 'fund': {
-                // 东方财富历史净值（备选模式）
-                if (config.useEastMoneyFund) return await getEastMoneyFundNav(code);
-                // 优先JSONP直连，失败回退东方财富（兜底006327/006328等），再回退代理
+                if (config.useEastMoneyFund) {
+                    // 东方财富历史净值（默认），失败回退天天基金JSONP，再回退代理
+                    try { return await getEastMoneyFundNav(code); }
+                    catch (e) { console.log('东方财富失败，回退天天基金:', e.message); }
+                }
+                // 天天基金JSONP直连，失败回退代理
                 try { return await getFundJSONP(code); }
-                catch (e) { console.log('基金JSONP失败，回退东方财富:', e.message); }
-                try { return await getEastMoneyFundNav(code); }
-                catch (e) { console.log('东方财富失败，回退代理:', e.message); }
+                catch (e) { console.log('基金JSONP失败，回退代理:', e.message); }
                 return await getFundNav(code);
             }
             default: throw new Error(`不支持的资产类型: ${type}`);
@@ -680,11 +682,9 @@ const APIManager = (function() {
             }
             case 'fund': {
                 if (config.useEastMoneyFund) {
-                    try { const n = await getEastMoneyFundName(code); return n; } catch(e) {}
-                    return code;
+                    try { const n = await getEastMoneyFundName(code); if (n !== code) return n; } catch(e) {}
                 }
                 try { const f = await getFundJSONP(code); return f.name || code; } catch(e) {}
-                try { const n = await getEastMoneyFundName(code); if (n !== code) return n; } catch(e) {}
                 try { const f = await getFundNav(code); return f.name || code; } catch(e) {}
                 return code;
             }
@@ -703,7 +703,8 @@ const APIManager = (function() {
                     change: quote.change || 0,
                     changePercent: quote.changePercent || 0,
                     previousClose: quote.previousClose || quote.price || 0,
-                    updateTime: quote.timestamp || Date.now()
+                    updateTime: quote.timestamp || Date.now(),
+                    navDate: quote.navDate || ''
                 });
                 await sleep(300);
             } catch (error) {

@@ -149,6 +149,20 @@ const UIManager = (function() {
             return;
         }
         
+        // 市场汇总（筛选时显示）
+        let summaryHTML = '';
+        if (filterType !== 'all') {
+            const totalValue = filteredAssets.reduce((s, a) => s + (a.currentPrice || 0) * a.shares, 0);
+            const dailyPnl = filteredAssets.reduce((s, a) => s + getDailyPnL(a).amount, 0);
+            const currency = filteredAssets[0] ? (filteredAssets[0].currency || APIManager.getAssetCurrency(filteredAssets[0].type)) : 'CNY';
+            const typeLabel = TYPE_MAP[filterType]?.name || filterType;
+            summaryHTML = `<div class="market-summary">
+                <span class="market-summary-label">${typeLabel} · ${filteredAssets.length}个</span>
+                <span>市值 ${formatPriceWithCNY(totalValue, currency, 2)}</span>
+                <span class="${dailyPnl >= 0 ? 'positive' : 'negative'}">当日 ${dailyPnl >= 0 ? '+' : ''}${formatPriceWithCNY(dailyPnl, currency, 2)}</span>
+            </div>`;
+        }
+        
         // 构建资产卡片
         const cardsHTML = filteredAssets.map(asset => {
             const typeInfo = TYPE_MAP[asset.type] || { name: '未知', badge: '?', class: '' };
@@ -158,6 +172,8 @@ const UIManager = (function() {
             const profit = currentValue - costValue;
             const profitPercent = costValue > 0 ? (profit / costValue * 100) : 0;
             const cat = asset.category || '未分类';
+            const platform = asset.platform || '';
+            const navDate = asset.type === 'fund' && asset.navDate ? ` (${asset.navDate.slice(5)})` : '';
             const daily = getDailyPnL(asset);
             const dailyClass = daily.amount >= 0 ? 'positive' : 'negative';
             const priceClass = (asset.currentPrice || 0) >= asset.cost ? 'positive' : 'negative';
@@ -171,6 +187,7 @@ const UIManager = (function() {
                                 ${asset.code}
                                 <span class="asset-type-badge ${typeInfo.class}">${typeInfo.badge}</span>
                                 <span class="category-tag">${cat}</span>
+                                ${platform ? `<span class="platform-tag">${platform}</span>` : ''}
                             </div>
                             <div class="asset-name">${asset.name || '未知'}</div>
                         </div>
@@ -190,7 +207,7 @@ const UIManager = (function() {
                         </div>
                         <div class="data-item">
                             <span class="data-label">当前价</span>
-                            <span class="data-value ${priceClass}">${formatPriceWithCNY(asset.currentPrice, currency, dec)}</span>
+                            <span class="data-value ${priceClass}">${formatPriceWithCNY(asset.currentPrice, currency, dec)}${navDate}</span>
                         </div>
                         <div class="data-item">
                             <span class="data-label">当日收益${daily.label ? '('+daily.label+')' : ''}</span>
@@ -227,7 +244,7 @@ const UIManager = (function() {
             `;
         }).join('');
         
-        container.innerHTML = cardsHTML;
+        container.innerHTML = summaryHTML + cardsHTML;
     }
     
     // 渲染标签页

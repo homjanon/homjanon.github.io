@@ -294,6 +294,25 @@ body {
     font-size: 16px;
 }
 
+/* 市场汇总 */
+.market-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    background: var(--primary-l);
+    font-size: 13px;
+    font-weight: 500;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.market-summary-label {
+    color: var(--primary);
+    font-weight: 600;
+}
+
 /* 资产卡片 */
 .asset-card {
     background: var(--bg-card);
@@ -759,6 +778,17 @@ body {
     border-radius: 4px;
     background: #e0e7ff;
     color: #4f46e5;
+    margin-left: 6px;
+    font-weight: 500;
+}
+
+.platform-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #fef3c7;
+    color: #92400e;
     margin-left: 6px;
     font-weight: 500;
 }

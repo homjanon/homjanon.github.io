@@ -155,6 +155,7 @@ const App = (function() {
         document.getElementById('modal-title').textContent = '添加资产';
         document.getElementById('query-result').textContent = '';
         document.getElementById('asset-category').value = '未分类';
+        document.getElementById('asset-platform').value = '';
         
         // 更新品种列表
         updateCategoryDatalist();
@@ -186,6 +187,7 @@ const App = (function() {
         document.getElementById('asset-code').value = asset.code;
         document.getElementById('asset-name').value = asset.name;
         document.getElementById('asset-category').value = asset.category || '未分类';
+        document.getElementById('asset-platform').value = asset.platform || '';
         document.getElementById('asset-cost').value = asset.cost;
         document.getElementById('asset-shares').value = asset.shares;
         document.getElementById('asset-current-price').value = asset.currentPrice || '';
@@ -265,6 +267,7 @@ const App = (function() {
         const code = document.getElementById('asset-code').value.trim();
         const name = document.getElementById('asset-name').value.trim();
         const category = document.getElementById('asset-category').value.trim() || '未分类';
+        const platform = document.getElementById('asset-platform').value.trim() || '';
         const cost = parseFloat(document.getElementById('asset-cost').value);
         const shares = parseFloat(document.getElementById('asset-shares').value);
         const currentPrice = document.getElementById('asset-current-price').value 
@@ -279,7 +282,7 @@ const App = (function() {
         const currency = APIManager.getAssetCurrency(type);
         
         const assetData = {
-            type, code, name, category, currency, cost, shares, currentPrice,
+            type, code, name, category, currency, cost, shares, currentPrice, platform,
             lastUpdateTime: currentPrice ? Date.now() : null
         };
         
@@ -387,7 +390,8 @@ const App = (function() {
                     change: r.change || 0,
                     changePercent: r.changePercent || 0,
                     previousClose: r.previousClose || r.price,
-                    lastUpdateTime: r.updateTime
+                    lastUpdateTime: r.updateTime,
+                    navDate: r.navDate || ''
                 });
             });
             successCount = result.results.length;

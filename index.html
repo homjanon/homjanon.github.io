@@ -182,6 +182,11 @@
                         <input type="number" id="asset-cost" step="0.0001" placeholder="请输入成本价" required>
                     </div>
                     <div class="form-group">
+                        <label for="asset-platform">平台标签（选填）</label>
+                        <input type="text" id="asset-platform" placeholder="如：雪球、天天基金、富途">
+                        <small class="form-hint">标注购买平台，方便管理</small>
+                    </div>
+                    <div class="form-group">
                         <label for="asset-shares">持有数量</label>
                         <input type="number" id="asset-shares" step="0.0001" placeholder="请输入持有数量" required>
                     </div>
@@ -229,14 +234,14 @@
                     <div class="form-group">
                         <label style="color:#2563eb;font-weight:600">
                             <input type="checkbox" id="config-use-tencent" checked> 
-                            腾讯财经 + 天天基金（默认，免API Key）<br>
-                            <small style="font-weight:400;color:#64748b;margin-left:24px">腾讯财经：A股/港股/美股直连 ｜ 天天基金：JSONP直连</small>
+                            腾讯财经 + 东方财富（默认，免API Key）<br>
+                            <small style="font-weight:400;color:#64748b;margin-left:24px">腾讯财经：A股/港股/美股直连 ｜ 东方财富：基金历史净值</small>
                         </label>
                     </div>
                     <div class="form-group">
                         <label>
-                            <input type="checkbox" id="config-use-eastmoney-fund"> 
-                            基金备选：东方财富历史净值（覆盖006327/006328等天天基金不支持的基金）
+                            <input type="checkbox" id="config-use-eastmoney-fund" checked> 
+                            基金备选：天天基金实时估值（取消勾选切换，支持006327/006328等的实时估值）
                         </label>
                     </div>
                     <div class="form-group" style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:8px">
