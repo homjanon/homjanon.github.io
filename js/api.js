@@ -426,7 +426,7 @@ const APIManager = (function() {
     
     async function getTencentQuote(type, code) {
         const tcode = getTencentCode(type, code);
-        const url = `https://qt.gtimg.cn/q=${tcode}`;
+        const url = `https://qt.gtimg.cn/q=${tcode}&_=${Date.now()}`;
         let text;
         try { text = await fetchGBK(url); }
         catch (e) { if (isCORSError(e)) text = await fetchGBKviaProxy(url); else throw e; }
@@ -460,7 +460,7 @@ const APIManager = (function() {
     
     async function getTencentName(type, code) {
         const tcode = getTencentCode(type, code);
-        const url = `https://qt.gtimg.cn/q=${tcode}`;
+        const url = `https://qt.gtimg.cn/q=${tcode}&_=${Date.now()}`;
         try {
             let text;
             try { text = await fetchGBK(url); }
@@ -713,26 +713,31 @@ const APIManager = (function() {
     // ==================== 汇率转换 ====================
     
     let exchangeRates = { USD_CNY: 7.2, HKD_CNY: 0.92 }; // 默认汇率
+    let exchangeRateDate = ''; // 格式 YYYY-MM-DD，每天仅获取一次
     
-    // 获取最新汇率（带缓存，每天更新一次）
+    // 获取最新汇率（每天仅更新一次）
     async function fetchExchangeRates() {
+        const today = new Date().toISOString().slice(0, 10);
+        if (exchangeRateDate === today) return exchangeRates; // 今天已获取过
+        
         try {
             const data = await fetchAPI('https://api.exchangerate-api.com/v4/latest/USD');
             if (data && data.rates) {
                 const usdCny = data.rates.CNY || 7.2;
-                // HKD via USD
                 const hkdCny = usdCny / (data.rates.HKD || 7.83);
                 exchangeRates = { USD_CNY: usdCny, HKD_CNY: hkdCny };
+                exchangeRateDate = today;
                 console.log('汇率更新:', `1 USD = ${usdCny.toFixed(4)} CNY, 1 HKD = ${hkdCny.toFixed(4)} CNY`);
-                return exchangeRates;
             }
         } catch (e) {
-            console.warn('汇率获取失败，使用默认汇率:', e.message);
+            console.warn('汇率获取失败，使用已有汇率:', e.message);
         }
         return exchangeRates;
     }
     
     function getExchangeRates() { return exchangeRates; }
+    
+    function hasForeignAssets() { return exchangeRateDate !== ''; }
     
     // 金额转换为人民币
     function toCNY(amount, currency) {

@@ -40,7 +40,7 @@ const UIManager = (function() {
         return `${local} <small style="color:#94a3b8">(≈${formatCurrency(cny, 'CNY', 0)})</small>`;
     }
     
-    // 当日盈亏计算（处理各市场非交易日）
+    // 当日盈亏计算（处理各市场非交易日/非交易时段）
     function getDailyPnL(asset) {
         const change = asset.change || 0;
         const amount = change * asset.shares;
@@ -50,16 +50,19 @@ const UIManager = (function() {
         const bj = new Date();
         const day = bj.getDay(); // 0=周日 1=周一 ... 6=周六
         const hour = bj.getHours();
+        const min = bj.getMinutes();
         
         if (asset.type === 'us-stock') {
             if (day === 0) return { amount: 0, rate: 0, label: '周日休市' };
             if (day === 6) return { amount, rate, label: '周五收盘' };
-            if (day === 1 && hour < 21) return { amount: 0, rate: 0, label: '开盘前' };
+            if (day === 1 && (hour < 21 || (hour === 21 && min < 30))) return { amount: 0, rate: 0, label: '开盘前' };
             return { amount, rate, label: '' };
         }
         
-        // A股/港股/基金：周末休市，当日收益为0
+        // A股/港股/基金：周末休市
         if (day === 0 || day === 6) return { amount: 0, rate: 0, label: '周末休市' };
+        // A股/港股/基金：交易日9:30前显示0
+        if (hour < 9 || (hour === 9 && min < 30)) return { amount: 0, rate: 0, label: '开盘前' };
         
         return { amount, rate, label: '' };
     }
@@ -296,7 +299,9 @@ const UIManager = (function() {
     function updateLastUpdateTime() {
         const now = new Date();
         const timeStr = now.toLocaleString('zh-CN');
-        document.getElementById('last-update').textContent = timeStr;
+        const rates = APIManager.getExchangeRates();
+        const rateStr = `USD/CNY ${rates.USD_CNY.toFixed(2)} | HKD/CNY ${rates.HKD_CNY.toFixed(2)}`;
+        document.getElementById('last-update').innerHTML = `${timeStr} · ${rateStr}`;
     }
     
     // 饼图实例（用于销毁重绘）
