@@ -62,21 +62,23 @@ const APIManager = (function() {
         return proxy + '?url=' + encodeURIComponent(url);
     }
     
-    // 通用fetch：直接调用 + CORS代理fallback
+    // 通用fetch：直接调用 + CORS代理fallback，自动防缓存
     async function fetchAPI(url) {
-        // 先尝试直接调用
+        const hash = url.indexOf('#');
+        const base = hash >= 0 ? url.slice(0, hash) : url;
+        const tail = hash >= 0 ? url.slice(hash) : '';
+        const cacheUrl = base.includes('?') ? `${base}&_=${Date.now()}${tail}` : `${base}?_=${Date.now()}${tail}`;
         try {
-            const response = await fetch(url);
+            const response = await fetch(cacheUrl);
             if (!response.ok) {
                 const text = await response.text().catch(() => '');
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             return await response.json();
         } catch (error) {
-            // 如果是CORS错误，尝试通过代理
             if (isCORSError(error)) {
                 console.log('直接调用失败（CORS），尝试通过代理...');
-                return await fetchAPIviaProxy(url);
+                return await fetchAPIviaProxy(cacheUrl);
             }
             throw error;
         }
@@ -736,8 +738,6 @@ const APIManager = (function() {
     }
     
     function getExchangeRates() { return exchangeRates; }
-    
-    function hasForeignAssets() { return exchangeRateDate !== ''; }
     
     // 金额转换为人民币
     function toCNY(amount, currency) {

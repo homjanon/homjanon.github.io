@@ -132,11 +132,9 @@ const App = (function() {
         if (assets.length === 0) return;
         let total = 0;
         assets.forEach(a => {
-            const c = a.currency || 'CNY';
+            const c = a.currency || APIManager.getAssetCurrency(a.type);
             const v = (a.currentPrice || 0) * a.shares;
-            if (c === 'USD') total += v * APIManager.getExchangeRates().USD_CNY;
-            else if (c === 'HKD') total += v * APIManager.getExchangeRates().HKD_CNY;
-            else total += v;
+            total += APIManager.toCNY(v, c);
         });
         StorageManager.addHistorySnapshot(total);
     }
