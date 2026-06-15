@@ -590,7 +590,7 @@ const APIManager = (function() {
     }
     
     async function getEastMoneyFundNav(code) {
-        const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=1`;
+        const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=1&rt=${Date.now()}`;
         const apidata = await injectScript(url, 'apidata');
         
         if (!apidata || !apidata.content) {
@@ -615,7 +615,7 @@ const APIManager = (function() {
     async function getEastMoneyFundName(code) {
         try {
             const fS_name = await injectScript(
-                `https://fund.eastmoney.com/pingzhongdata/${code}.js`, 'fS_name', 5000
+                `https://fund.eastmoney.com/pingzhongdata/${code}.js?rt=${Date.now()}`, 'fS_name', 5000
             );
             return fS_name || code;
         } catch (e) {
