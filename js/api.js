@@ -600,14 +600,31 @@ const APIManager = (function() {
         if (!apidata || !apidata.content) {
             throw new Error(`东方财富未返回基金 ${code} 数据`);
         }
-        // 解析HTML表格: <tr><td>日期</td><td>净值</td><td>累计</td><td>日增长率</td>
-        const rowMatch = apidata.content.match(/<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/);
-        if (!rowMatch) throw new Error(`无法解析基金 ${code} 净值`);
         
-        const nav = parseFloat(rowMatch[2]) || 0;
-        const navDate = (rowMatch[1] || '').trim();
-        const changeStr = (rowMatch[4] || '').replace('%', '').trim();
-        const changePercent = parseFloat(changeStr) || 0;
+        let nav, navDate, changePercent;
+        const raw = apidata.content;
+        
+        // 1. 尝试HTML表格格式（旧版API）
+        const rowMatch = raw.match(/<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/);
+        if (rowMatch) {
+            nav = parseFloat(rowMatch[2]) || 0;
+            navDate = (rowMatch[1] || '').trim();
+            const changeStr = (rowMatch[4] || '').replace('%', '').trim();
+            changePercent = parseFloat(changeStr) || 0;
+        } else {
+            // 2. 纯文本格式（新版API）：7个表头+7个数据，空格/换行分隔
+            const parts = raw.trim().split(/[\s]+/);
+            // 找第一个日期格式的值作为数据起始点
+            let dataStart = -1;
+            for (let i = 0; i < parts.length; i++) {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(parts[i])) { dataStart = i; break; }
+            }
+            if (dataStart < 0) throw new Error(`无法解析基金 ${code} 净值`);
+            navDate = parts[dataStart];
+            nav = parseFloat(parts[dataStart + 1]) || 0;
+            const changeStr = (parts[dataStart + 3] || '').replace('%', '').trim();
+            changePercent = parseFloat(changeStr) || 0;
+        }
         
         return {
             code, name: code,
