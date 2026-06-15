@@ -441,14 +441,16 @@ const APIManager = (function() {
         if (!m) throw new Error(`无法解析 ${code} 数据`);
         
         const fields = m[1].split('~');
-        // 字段索引：1=名称, 3=当前价, 4=昨收, 5=今开, 6=成交量, 32=涨跌幅, 33=最高, 34=最低, 43=涨跌额
+        // 字段索引(0-based): 1=名称, 3=当前价, 4=昨收, 5=今开, 31=涨跌额, 32=涨跌幅, 33=最高, 34=最低
         const name = fields[1] || code;
         const price = parseFloat(fields[3]) || 0;
         const prevClose = parseFloat(fields[4]) || price;
-        const change = parseFloat(fields[43] || fields[32]) || (price - prevClose);
-        const changePercent = parseFloat(fields[32]) || 0;
         
         if (!price) throw new Error(`腾讯财经 ${code} 无价格`);
+        
+        // 涨跌幅/涨跌额用 price - prevClose 计算（跨市场一致，避免字段偏移）
+        const change = price - prevClose;
+        const changePercent = prevClose > 0 ? (change / prevClose * 100) : 0;
         
         return {
             price, change, changePercent,
