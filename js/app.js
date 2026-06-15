@@ -424,8 +424,14 @@ const App = (function() {
         const useTencent = document.getElementById('config-use-tencent').checked;
         const useEastMoneyFund = document.getElementById('config-use-eastmoney-fund').checked;
         
+        // 路线二依赖路线一：勾选天天基金时自动保持腾讯直连
+        if (useEastMoneyFund && !useTencent) {
+            document.getElementById('config-use-tencent').checked = true;
+        }
+        
+        const finalUseTencent = document.getElementById('config-use-tencent').checked;
         const existing = StorageManager.getConfig();
-        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent, useEastMoneyFund };
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent: finalUseTencent, useEastMoneyFund };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
