@@ -505,7 +505,8 @@ const APIManager = (function() {
                     return;
                 }
                 const nav = parseFloat(data.dwjz) || 0;
-                const estNav = parseFloat(data.gsz) || nav;
+                const gszVal = parseFloat(data.gsz);
+                const estNav = gszVal > 0 ? gszVal : nav;
                 resolve({
                     code: data.fundcode, name: data.name || code,
                     nav, estimateNav: estNav,
@@ -541,7 +542,8 @@ const APIManager = (function() {
         }
         
         const nav = parseFloat(data.dwjz) || 0;
-        const estNav = parseFloat(data.gsz) || nav;
+        const gszVal = parseFloat(data.gsz);
+        const estNav = gszVal > 0 ? gszVal : nav;
         
         return {
             code: data.fundcode,
