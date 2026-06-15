@@ -647,13 +647,13 @@ const APIManager = (function() {
             }
             case 'fund': {
                 if (config.useEastMoneyFund) {
-                    // 东方财富历史净值（默认），失败回退天天基金JSONP，再回退代理
-                    try { return await getEastMoneyFundNav(code); }
-                    catch (e) { console.log('东方财富失败，回退天天基金:', e.message); }
+                    // 路线二：天天基金JSONP直连
+                    try { return await getFundJSONP(code); }
+                    catch (e) { console.log('天天基金失败，回退东方财富:', e.message); }
                 }
-                // 天天基金JSONP直连，失败回退代理
-                try { return await getFundJSONP(code); }
-                catch (e) { console.log('基金JSONP失败，回退代理:', e.message); }
+                // 路线一/三：东方财富历史净值
+                try { return await getEastMoneyFundNav(code); }
+                catch (e) { console.log('东方财富失败，回退代理:', e.message); }
                 return await getFundNav(code);
             }
             default: throw new Error(`不支持的资产类型: ${type}`);
@@ -682,10 +682,11 @@ const APIManager = (function() {
             }
             case 'fund': {
                 if (config.useEastMoneyFund) {
-                    try { const n = await getEastMoneyFundName(code); if (n !== code) return n; } catch(e) {}
+                    // 路线二：天天基金
+                    try { const f = await getFundJSONP(code); return f.name || code; } catch(e) {}
                 }
-                try { const f = await getFundJSONP(code); return f.name || code; } catch(e) {}
-                try { const f = await getFundNav(code); return f.name || code; } catch(e) {}
+                // 路线一/三：东方财富
+                try { const n = await getEastMoneyFundName(code); if (n !== code) return n; } catch(e) {}
                 return code;
             }
             default: return code;

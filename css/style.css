@@ -297,6 +297,7 @@ body {
 
 /* 市场汇总 */
 .market-summary {
+    grid-column: 1 / -1;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -753,6 +754,9 @@ body {
     .asset-data { gap: 8px; margin-top: 8px; }
     .asset-footer { font-size: 10px; margin-top: 8px; padding-top: 8px; }
     .category-tag { font-size: 9px; padding: 1px 5px; }
+    .platform-tag { font-size: 9px; padding: 1px 5px; }
+    .market-summary { font-size: 11px; padding: 8px 12px; flex-wrap: wrap; gap: 4px; }
+    .market-summary-label { font-size: 12px; }
     .asset-type-badge { font-size: 9px; padding: 1px 4px; }
     .modal-content { margin: 8px; }
     .modal-header { padding: 14px 16px; }

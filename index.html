@@ -234,18 +234,19 @@
                     <div class="form-group">
                         <label style="color:#2563eb;font-weight:600">
                             <input type="checkbox" id="config-use-tencent" checked> 
-                            腾讯财经 + 东方财富（默认，免API Key）<br>
-                            <small style="font-weight:400;color:#64748b;margin-left:24px">腾讯财经：A股/港股/美股直连 ｜ 东方财富：基金历史净值</small>
+                            路线一：腾讯财经 + 东方财富（默认，免Key直连）
                         </label>
+                        <small class="form-hint" style="margin-left:24px">股票：腾讯财经直连 ｜ 基金：东方财富历史净值（覆盖全基金）</small>
                     </div>
                     <div class="form-group">
                         <label>
-                            <input type="checkbox" id="config-use-eastmoney-fund" checked> 
-                            基金备选：天天基金实时估值（取消勾选切换，支持006327/006328等的实时估值）
+                            <input type="checkbox" id="config-use-eastmoney-fund"> 
+                            路线二：基金改用天天基金实时估值（免Key直连）
                         </label>
+                        <small class="form-hint" style="margin-left:24px">勾选后基金换为天天基金JSONP实时估值（部分QDII基金不支持）</small>
                     </div>
                     <div class="form-group" style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:8px">
-                        <small style="color:#94a3b8">-- 以下为备用数据源（取消上方勾选后启用；基金JSONP失败时自动回退代理）--</small>
+                        <small style="color:#94a3b8">-- 路线三：取消上方勾选，启用 API Key 模式（需自行申请）--</small>
                     </div>
                     
                     <div class="form-group">

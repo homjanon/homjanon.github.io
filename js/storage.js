@@ -108,7 +108,7 @@ const StorageManager = (function() {
             corsProxy: 'https://corsproxy.io/?',
             demoMode: false,
             useTencent: true,
-            useEastMoneyFund: true,
+            useEastMoneyFund: false,
             categories: ['红利', '纳指100', '标普500']
         };
     }
