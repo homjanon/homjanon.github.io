@@ -507,10 +507,12 @@ const APIManager = (function() {
                 const nav = parseFloat(data.dwjz) || 0;
                 const gszVal = parseFloat(data.gsz);
                 const estNav = gszVal > 0 ? gszVal : nav;
+                const changePct = parseFloat(data.gszzl) || 0;
                 resolve({
                     code: data.fundcode, name: data.name || code,
                     nav, estimateNav: estNav, navDate: data.jzrq || '',
-                    changePercent: parseFloat(data.gszzl) || 0,
+                    change: estNav - nav,
+                    changePercent: changePct,
                     timestamp: Date.now(), price: estNav
                 });
             };
@@ -549,6 +551,7 @@ const APIManager = (function() {
             code: data.fundcode,
             name: data.name || code,
             nav, estimateNav: estNav || nav,
+            change: estNav - nav,
             navDate: data.jzrq || '',
             changePercent: parseFloat(data.gszzl) || 0,
             timestamp: Date.now(),
