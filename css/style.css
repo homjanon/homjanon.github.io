@@ -1,6 +1,7 @@
 /* 全局样式 */
 :root {
     --primary-color: #2563eb;
+    --primary-l: #dbeafe;
     --primary-dark: #1d4ed8;
     --secondary-color: #64748b;
     --success-color: #10b981;
@@ -309,7 +310,7 @@ body {
     gap: 8px;
 }
 .market-summary-label {
-    color: var(--primary);
+    color: var(--primary-color);
     font-weight: 600;
 }
 
@@ -814,18 +815,4 @@ input[type="checkbox"] {
     cursor: pointer;
     vertical-align: middle;
     margin-right: 8px;
-}
-
-/* 价格更新动画 */
-.price-updated {
-    animation: priceFlash 0.5s ease-out;
-}
-
-@keyframes priceFlash {
-    0% {
-        background-color: rgba(37, 99, 235, 0.1);
-    }
-    100% {
-        background-color: transparent;
-    }
 }
