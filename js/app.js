@@ -41,6 +41,8 @@ const App = (function() {
         // 导出导入
         document.getElementById('btn-export').addEventListener('click', () => exportData());
         document.getElementById('btn-import').addEventListener('click', () => document.getElementById('import-file').click());
+        document.getElementById('btn-cloud-backup').addEventListener('click', () => cloudBackup());
+        document.getElementById('btn-cloud-import').addEventListener('click', () => cloudImport());
         document.getElementById('import-file').addEventListener('change', (e) => {
             if (e.target.files[0]) importData(e.target.files[0]);
             e.target.value = '';
@@ -211,6 +213,7 @@ const App = (function() {
         document.getElementById('config-demo-mode').checked = config.demoMode !== false;
         document.getElementById('config-use-tencent').checked = config.useTencent === true;
         document.getElementById('config-use-eastmoney-fund').checked = config.useEastMoneyFund === true;
+        document.getElementById('config-github-token').value = config.githubToken || '';
         
         showModal('modal-config');
     }
@@ -430,8 +433,10 @@ const App = (function() {
         }
         
         const finalUseTencent = document.getElementById('config-use-tencent').checked;
+        const githubToken = document.getElementById('config-github-token').value.trim();
+        
         const existing = StorageManager.getConfig();
-        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent: finalUseTencent, useEastMoneyFund };
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent: finalUseTencent, useEastMoneyFund, githubToken };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
@@ -465,6 +470,60 @@ const App = (function() {
             }
         };
         reader.readAsText(file);
+    }
+    
+    // 云端备份
+    async function cloudBackup() {
+        const token = document.getElementById('config-github-token').value.trim();
+        if (!token) { UIManager.showToast('请先填写 GitHub Token', 'error'); return; }
+        
+        const btn = document.getElementById('btn-cloud-backup');
+        btn.disabled = true; btn.textContent = '备份中...';
+        
+        try {
+            const data = StorageManager.exportData();
+            const gistId = await APIManager.gistBackup(data, token);
+            const config = StorageManager.getConfig();
+            config.cloudGistId = gistId;
+            StorageManager.saveConfig(config);
+            UIManager.showToast('云端备份成功！链接可用于导入', 'success');
+        } catch (e) {
+            console.error('云端备份失败:', e);
+            UIManager.showToast(`备份失败: ${e.message}`, 'error');
+        }
+        btn.disabled = false; btn.textContent = '☁️ 备份到云端';
+    }
+    
+    // 云端导入
+    async function cloudImport() {
+        const token = document.getElementById('config-github-token').value.trim();
+        if (!token) { UIManager.showToast('请先填写 GitHub Token', 'error'); return; }
+        
+        const btn = document.getElementById('btn-cloud-import');
+        btn.disabled = true; btn.textContent = '导入中...';
+        
+        try {
+            const data = await APIManager.gistFetch(token);
+            if (!data.assets || !Array.isArray(data.assets)) {
+                throw new Error('云端数据格式不正确');
+            }
+            if (!confirm(`将导入云端数据（${data.assets.length} 个资产），当前数据将被覆盖，确认？`)) {
+                btn.disabled = false; btn.textContent = '📥 从云端导入';
+                return;
+            }
+            StorageManager.clearAllData();
+            const success = StorageManager.importData(JSON.stringify(data));
+            if (success) {
+                UIManager.showToast(`云端导入成功：${data.assets.length} 个资产`, 'success');
+                render();
+            } else {
+                UIManager.showToast('导入失败', 'error');
+            }
+        } catch (e) {
+            console.error('云端导入失败:', e);
+            UIManager.showToast(`导入失败: ${e.message}`, 'error');
+        }
+        btn.disabled = false; btn.textContent = '📥 从云端导入';
     }
     
     // 公开API (供HTML onclick调用)

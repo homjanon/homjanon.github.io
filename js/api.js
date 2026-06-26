@@ -831,6 +831,65 @@ const APIManager = (function() {
     
     function getDemoName(type, code) { return DEMO_NAMES[code] || `${code} (演示)`; }
     
+    // ==================== GitHub Gist 云端备份 ====================
+    
+    async function gistBackup(data, token) {
+        const config = getConfig();
+        const gistId = config.cloudGistId;
+        const payload = {
+            description: '投资组合数据备份',
+            public: false,
+            files: { 'portfolio.json': { content: JSON.stringify(data, null, 2) } }
+        };
+        const headers = {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+        };
+        
+        let resp, result;
+        if (gistId) {
+            // 更新已有 Gist
+            resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+                method: 'PATCH', headers,
+                body: JSON.stringify({ files: payload.files })
+            });
+        } else {
+            // 创建新 Gist
+            resp = await fetch('https://api.github.com/gists', {
+                method: 'POST', headers,
+                body: JSON.stringify(payload)
+            });
+        }
+        
+        if (!resp.ok) {
+            const err = await resp.text().catch(() => '');
+            throw new Error(`GitHub API ${resp.status}: ${err.substring(0, 200)}`);
+        }
+        result = await resp.json();
+        return result.id;
+    }
+    
+    async function gistFetch(token) {
+        const config = getConfig();
+        const gistId = config.cloudGistId;
+        if (!gistId) throw new Error('未找到云端备份ID，请先备份一次');
+        
+        const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        if (!resp.ok) {
+            const err = await resp.text().catch(() => '');
+            throw new Error(`GitHub API ${resp.status}: ${err.substring(0, 200)}`);
+        }
+        const result = await resp.json();
+        const file = result.files && result.files['portfolio.json'];
+        if (!file || !file.content) throw new Error('Gist 中未找到 portfolio.json');
+        return JSON.parse(file.content);
+    }
+    
     return {
         getFinnhubQuote, getFinnhubCompanyProfile,
         getFinnhubHKQuote, getFinnhubHKName,
@@ -842,6 +901,7 @@ const APIManager = (function() {
         getEastMoneyFundNav, getEastMoneyFundName,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
-        getCurrencySymbol, getAssetCurrency
+        getCurrencySymbol, getAssetCurrency,
+        gistBackup, gistFetch
     };
 })();
