@@ -843,7 +843,8 @@ const APIManager = (function() {
         };
         const headers = {
             'Authorization': `token ${token}`,
-            'Accept': 'application/vnd.github.v3+json'
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
         };
         
         let resp, result;
@@ -898,6 +899,7 @@ const APIManager = (function() {
             gistId = found.id;
             // 自动保存到本地
             config.cloudGistId = gistId;
+            config.githubToken = token;
             StorageManager.saveConfig(config);
         }
         
