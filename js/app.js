@@ -486,7 +486,7 @@ const App = (function() {
             const config = StorageManager.getConfig();
             config.cloudGistId = gistId;
             StorageManager.saveConfig(config);
-            UIManager.showToast('云端备份成功！链接可用于导入', 'success');
+            UIManager.showToast(`云端备份成功！Gist: ${gistId.slice(0,8)}...`, 'success');
         } catch (e) {
             console.error('云端备份失败:', e);
             UIManager.showToast(`备份失败: ${e.message}`, 'error');

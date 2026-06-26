@@ -871,8 +871,35 @@ const APIManager = (function() {
     
     async function gistFetch(token) {
         const config = getConfig();
-        const gistId = config.cloudGistId;
-        if (!gistId) throw new Error('未找到云端备份ID，请先备份一次');
+        let gistId = config.cloudGistId;
+        
+        // 新设备无本地ID：自动搜索用户Gist列表
+        if (!gistId) {
+            const resp = await fetch('https://api.github.com/gists?per_page=100', {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            if (!resp.ok) {
+                const err = await resp.text().catch(() => '');
+                throw new Error(`搜索Gist失败 ${resp.status}: ${err.substring(0,100)}`);
+            }
+            const gists = await resp.json();
+            if (!Array.isArray(gists) || gists.length === 0) {
+                throw new Error('未找到云端备份：该Token下无Gist，请先在旧设备备份一次');
+            }
+            // 按描述匹配
+            const found = gists.find(g =>
+                g.description === '投资组合数据备份' &&
+                g.files && g.files['portfolio.json']
+            );
+            if (!found) throw new Error('未找到云端备份，请先在旧设备备份一次');
+            gistId = found.id;
+            // 自动保存到本地
+            config.cloudGistId = gistId;
+            StorageManager.saveConfig(config);
+        }
         
         const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
             headers: {
