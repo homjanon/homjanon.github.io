@@ -256,12 +256,17 @@
                         </label>
                     </div>
                     <div class="form-group" style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:8px">
-                        <small style="color:#2563eb;font-weight:600">☁️ GitHub Gist 云端备份</small>
+                        <small style="color:#2563eb;font-weight:600">☁️ JSONBin 云端备份</small>
                     </div>
                     <div class="form-group">
-                        <label for="config-github-token">GitHub Token</label>
-                        <input type="password" id="config-github-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-                        <small class="form-hint">创建经典 token，勾选 <code>gist</code> 权限：<a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></small>
+                        <label for="config-cloud-apikey">JSONBin API Key</label>
+                        <input type="password" id="config-cloud-apikey" placeholder="$2b$10$xxxxxxxxxxxxxxxxxxxxx">
+                        <small class="form-hint">注册后获取：<a href="https://jsonbin.io/api-keys" target="_blank">jsonbin.io/api-keys</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="config-cloud-binid">Bin ID（选填，首次备份后自动填充）</label>
+                        <input type="text" id="config-cloud-binid" placeholder="首次备份成功后自动出现">
+                        <small class="form-hint">跨设备导入时粘贴此 ID；同一 Key 下首次备份自动生成</small>
                     </div>
                     <div class="form-actions" style="margin-bottom:12px">
                         <button type="button" class="btn btn-secondary" id="btn-cloud-backup">☁️ 备份到云端</button>

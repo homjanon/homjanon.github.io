@@ -109,8 +109,8 @@ const StorageManager = (function() {
             demoMode: false,
             useTencent: true,
             useEastMoneyFund: false,
-            githubToken: '',
-            cloudGistId: '',
+            cloudApiKey: '',
+            cloudBinId: '',
             categories: ['红利', '纳指100', '标普500']
         };
     }

@@ -831,92 +831,49 @@ const APIManager = (function() {
     
     function getDemoName(type, code) { return DEMO_NAMES[code] || `${code} (演示)`; }
     
-    // ==================== GitHub Gist 云端备份 ====================
+    // ==================== JSONBin 云端备份 ====================
     
-    async function gistBackup(data, token) {
+    async function cloudBackup(data, apiKey) {
         const config = getConfig();
-        const gistId = config.cloudGistId;
-        const payload = {
-            description: '投资组合数据备份',
-            public: false,
-            files: { 'portfolio.json': { content: JSON.stringify(data, null, 2) } }
-        };
+        const binId = config.cloudBinId;
         const headers = {
-            'Authorization': `token ${token}`,
-            'Accept': 'application/vnd.github.v3+json',
+            'X-Master-Key': apiKey,
             'Content-Type': 'application/json'
         };
         
         let resp, result;
-        if (gistId) {
-            // 更新已有 Gist
-            resp = await fetch(`https://api.github.com/gists/${gistId}`, {
-                method: 'PATCH', headers,
-                body: JSON.stringify({ files: payload.files })
+        if (binId) {
+            resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+                method: 'PUT', headers,
+                body: JSON.stringify(data)
             });
         } else {
-            // 创建新 Gist
-            resp = await fetch('https://api.github.com/gists', {
+            resp = await fetch('https://api.jsonbin.io/v3/b', {
                 method: 'POST', headers,
-                body: JSON.stringify(payload)
+                body: JSON.stringify(data)
             });
         }
         
         if (!resp.ok) {
             const err = await resp.text().catch(() => '');
-            throw new Error(`GitHub API ${resp.status}: ${err.substring(0, 200)}`);
+            throw new Error(`JSONBin ${resp.status}: ${err.substring(0, 200)}`);
         }
         result = await resp.json();
-        return result.id;
+        return result.metadata.id;
     }
     
-    async function gistFetch(token) {
-        const config = getConfig();
-        let gistId = config.cloudGistId;
+    async function cloudFetch(apiKey, binId) {
+        if (!binId) throw new Error('请输入云端 Bin ID（首次备份成功后获得）');
         
-        // 新设备无本地ID：自动搜索用户Gist列表
-        if (!gistId) {
-            const resp = await fetch('https://api.github.com/gists?per_page=100', {
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-            if (!resp.ok) {
-                const err = await resp.text().catch(() => '');
-                throw new Error(`搜索Gist失败 ${resp.status}: ${err.substring(0,100)}`);
-            }
-            const gists = await resp.json();
-            if (!Array.isArray(gists) || gists.length === 0) {
-                throw new Error('未找到云端备份：该Token下无Gist，请先在旧设备备份一次');
-            }
-            // 按描述匹配
-            const found = gists.find(g =>
-                g.description === '投资组合数据备份' &&
-                g.files && g.files['portfolio.json']
-            );
-            if (!found) throw new Error('未找到云端备份，请先在旧设备备份一次');
-            gistId = found.id;
-            // 自动保存到本地
-            config.cloudGistId = gistId;
-            config.githubToken = token;
-            StorageManager.saveConfig(config);
-        }
-        
-        const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
-            headers: {
-                'Authorization': `token ${token}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
+        const resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+            headers: { 'X-Master-Key': apiKey }
         });
         if (!resp.ok) {
             const err = await resp.text().catch(() => '');
-            throw new Error(`GitHub API ${resp.status}: ${err.substring(0, 200)}`);
+            throw new Error(`JSONBin ${resp.status}: ${err.substring(0, 200)}`);
         }
         const result = await resp.json();
-        const file = result.files && result.files['portfolio.json'];
-        if (!file || !file.content) throw new Error('Gist 中未找到 portfolio.json');
-        return JSON.parse(file.content);
+        return result.record;
     }
     
     return {
@@ -931,6 +888,6 @@ const APIManager = (function() {
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,
-        gistBackup, gistFetch
+        cloudBackup, cloudFetch
     };
 })();

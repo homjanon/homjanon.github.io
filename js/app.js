@@ -213,7 +213,8 @@ const App = (function() {
         document.getElementById('config-demo-mode').checked = config.demoMode !== false;
         document.getElementById('config-use-tencent').checked = config.useTencent === true;
         document.getElementById('config-use-eastmoney-fund').checked = config.useEastMoneyFund === true;
-        document.getElementById('config-github-token').value = config.githubToken || '';
+        document.getElementById('config-cloud-apikey').value = config.cloudApiKey || '';
+        document.getElementById('config-cloud-binid').value = config.cloudBinId || '';
         
         showModal('modal-config');
     }
@@ -433,10 +434,11 @@ const App = (function() {
         }
         
         const finalUseTencent = document.getElementById('config-use-tencent').checked;
-        const githubToken = document.getElementById('config-github-token').value.trim();
+        const cloudApiKey = document.getElementById('config-cloud-apikey').value.trim();
+        const cloudBinId = document.getElementById('config-cloud-binid').value.trim();
         
         const existing = StorageManager.getConfig();
-        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent: finalUseTencent, useEastMoneyFund, githubToken };
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent: finalUseTencent, useEastMoneyFund, cloudApiKey, cloudBinId };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
@@ -474,19 +476,23 @@ const App = (function() {
     
     // 云端备份
     async function cloudBackup() {
-        const token = document.getElementById('config-github-token').value.trim();
-        if (!token) { UIManager.showToast('请先填写 GitHub Token', 'error'); return; }
+        const apiKey = document.getElementById('config-cloud-apikey').value.trim();
+        if (!apiKey) { UIManager.showToast('请先填写 JSONBin API Key', 'error'); return; }
         
         const btn = document.getElementById('btn-cloud-backup');
         btn.disabled = true; btn.textContent = '备份中...';
         
         try {
-            const data = StorageManager.exportData();
-            const gistId = await APIManager.gistBackup(data, token);
+            const data = JSON.parse(StorageManager.exportData());
+            const binId = await APIManager.cloudBackup(data, apiKey);
+            
             const config = StorageManager.getConfig();
-            config.cloudGistId = gistId;
+            config.cloudBinId = binId;
+            config.cloudApiKey = apiKey;
             StorageManager.saveConfig(config);
-            UIManager.showToast(`云端备份成功！Gist: ${gistId.slice(0,8)}...`, 'success');
+            
+            document.getElementById('config-cloud-binid').value = binId;
+            UIManager.showToast(`备份成功！BinID: ${binId.slice(0, 8)}...`, 'success');
         } catch (e) {
             console.error('云端备份失败:', e);
             UIManager.showToast(`备份失败: ${e.message}`, 'error');
@@ -496,14 +502,16 @@ const App = (function() {
     
     // 云端导入
     async function cloudImport() {
-        const token = document.getElementById('config-github-token').value.trim();
-        if (!token) { UIManager.showToast('请先填写 GitHub Token', 'error'); return; }
+        const apiKey = document.getElementById('config-cloud-apikey').value.trim();
+        const binId = document.getElementById('config-cloud-binid').value.trim();
+        if (!apiKey) { UIManager.showToast('请先填写 JSONBin API Key', 'error'); return; }
+        if (!binId) { UIManager.showToast('请填写 Bin ID（首次备份后获得）', 'error'); return; }
         
         const btn = document.getElementById('btn-cloud-import');
         btn.disabled = true; btn.textContent = '导入中...';
         
         try {
-            const data = await APIManager.gistFetch(token);
+            const data = await APIManager.cloudFetch(apiKey, binId);
             if (!data.assets || !Array.isArray(data.assets)) {
                 throw new Error('云端数据格式不正确');
             }
@@ -514,7 +522,7 @@ const App = (function() {
             StorageManager.clearAllData();
             const success = StorageManager.importData(JSON.stringify(data));
             if (success) {
-                UIManager.showToast(`云端导入成功：${data.assets.length} 个资产`, 'success');
+                UIManager.showToast(`导入成功：${data.assets.length} 个资产`, 'success');
                 render();
             } else {
                 UIManager.showToast('导入失败', 'error');
