@@ -741,6 +741,13 @@ body {
 .indicator-change.up { color: #ef4444; }
 .indicator-change.down { color: #10b981; }
 
+.indicator-hint {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
 /* 移动端 */
 @media (max-width: 640px) {
     .indicators-grid {
@@ -765,6 +772,9 @@ body {
     }
     .indicator-change {
         font-size: 10px;
+    }
+    .indicator-hint {
+        font-size: 9px;
     }
 }
 

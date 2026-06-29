@@ -19,6 +19,10 @@ const App = (function() {
         render();
         UIManager.renderTabs('all');
         UIManager.updateLastUpdateTime();
+        
+        // 懒加载市场指标（非阻塞）
+        try { await UIManager.renderIndicators(); } catch(e) { console.warn('指标加载失败:', e.message); }
+        
         console.log('初始化完成');
     }
     
@@ -124,7 +128,6 @@ const App = (function() {
         const assets = StorageManager.getAssets();
         UIManager.renderOverview(assets);
         UIManager.renderCharts(assets);
-        UIManager.renderIndicators();
         UIManager.renderAssetsList(assets, currentFilter);
         // 记录净值快照
         recordSnapshot(assets);
@@ -411,6 +414,7 @@ const App = (function() {
         
         if (successCount > 0) {
             render();
+            try { await UIManager.renderIndicators(); } catch(e) {}
             if (errorCount > 0) {
                 UIManager.showToast(`刷新完成，${successCount}成功，${errorCount}失败`, 'info');
                 console.warn('刷新失败的资产:', errors);
@@ -521,7 +525,13 @@ const App = (function() {
                 return;
             }
             StorageManager.clearAllData();
-            const success = StorageManager.importData(JSON.stringify(data));
+            let success = false;
+            try {
+                success = StorageManager.importData(JSON.stringify(data));
+            } catch (e) {
+                console.warn('JSON序列化异常，尝试直接导入:', e.message);
+                success = StorageManager.importData(JSON.stringify({ assets: data.assets, config: data.config }));
+            }
             if (success) {
                 UIManager.showToast(`导入成功：${data.assets.length} 个资产`, 'success');
                 render();
