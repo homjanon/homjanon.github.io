@@ -9,7 +9,6 @@
     <title>个人投资管理系统</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -83,12 +82,41 @@
             </div>
         </section>
 
-        <!-- 净值走势 -->
-        <section class="charts-section" id="history-section" style="display:none">
-            <div class="chart-card chart-full">
-                <h3 class="chart-title">净值走势（人民币）</h3>
-                <div class="chart-wrapper-wide">
-                    <canvas id="chart-history"></canvas>
+        <!-- 市场指标 -->
+        <section class="charts-section" id="indicators-section">
+            <h3 class="chart-title" style="text-align:center;margin-bottom:14px">市场估值指标</h3>
+            <div class="indicators-grid">
+                <div class="indicator-card">
+                    <div class="indicator-icon red">😰</div>
+                    <div class="indicator-body">
+                        <div class="indicator-name">VIX 恐慌指数</div>
+                        <div class="indicator-value" id="ind-vix-value">--</div>
+                        <div class="indicator-change" id="ind-vix-change">--</div>
+                    </div>
+                </div>
+                <div class="indicator-card">
+                    <div class="indicator-icon blue">📊</div>
+                    <div class="indicator-body">
+                        <div class="indicator-name">纳指100 PE</div>
+                        <div class="indicator-value" id="ind-nasdaq-value">--</div>
+                        <div class="indicator-change" id="ind-nasdaq-change">--</div>
+                    </div>
+                </div>
+                <div class="indicator-card">
+                    <div class="indicator-icon blue">📈</div>
+                    <div class="indicator-body">
+                        <div class="indicator-name">标普500 PE</div>
+                        <div class="indicator-value" id="ind-sp500-value">--</div>
+                        <div class="indicator-change" id="ind-sp500-change">--</div>
+                    </div>
+                </div>
+                <div class="indicator-card">
+                    <div class="indicator-icon green">🇨🇳</div>
+                    <div class="indicator-body">
+                        <div class="indicator-name">沪深300 PE</div>
+                        <div class="indicator-value" id="ind-csi300-value">--</div>
+                        <div class="indicator-change" id="ind-csi300-change">--</div>
+                    </div>
                 </div>
             </div>
         </section>

@@ -327,6 +327,44 @@ const UIManager = (function() {
     let historyChart = null;
     
     // 渲染净值走势折线图
+    async function renderIndicators() {
+        const section = document.getElementById('indicators-section');
+        if (!section) return;
+        
+        const data = await APIManager.fetchIndicators();
+        if (!data) return;
+        
+        const setCard = (id, datum, unit, format) => {
+            const elVal = document.getElementById(id + '-value');
+            const elChg = document.getElementById(id + '-change');
+            if (!elVal) return;
+            
+            if (datum && datum.value != null) {
+                elVal.textContent = format ? format(datum.value) : datum.value.toFixed(2);
+                if (elChg && datum.changePercent != null) {
+                    const sign = datum.changePercent >= 0 ? '+' : '';
+                    const cls = datum.changePercent >= 0 ? 'up' : 'down';
+                    elChg.textContent = `${sign}${datum.changePercent.toFixed(2)}%`;
+                    elChg.className = `indicator-change ${cls}`;
+                }
+            }
+        };
+        
+        setCard('ind-vix', data.vix, '%', v => v.toFixed(1));
+        setCard('ind-nasdaq', data.nasdaqPe, '倍', v => {
+            const lbl = data.nasdaqPe?.label || '';
+            return v ? v.toFixed(1) + lbl : '--';
+        });
+        setCard('ind-sp500', data.sp500Pe, '倍', v => {
+            const lbl = data.sp500Pe?.label || '';
+            return v ? v.toFixed(1) + lbl : '--';
+        });
+        setCard('ind-csi300', data.csi300Pe, '倍', v => {
+            const lbl = data.csi300Pe?.label || '';
+            return v ? v.toFixed(1) + lbl : '--';
+        });
+    }
+    
     function renderHistoryChart() {
         const section = document.getElementById('history-section');
         const history = StorageManager.getHistory();
@@ -516,7 +554,7 @@ const UIManager = (function() {
         renderOverview,
         renderAssetsList,
         renderCharts,
-        renderHistoryChart,
+        renderIndicators,
         renderTabs,
         showLoading,
         hideLoading,

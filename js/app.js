@@ -123,7 +123,7 @@ const App = (function() {
         const assets = StorageManager.getAssets();
         UIManager.renderOverview(assets);
         UIManager.renderCharts(assets);
-        UIManager.renderHistoryChart();
+        UIManager.renderIndicators();
         UIManager.renderAssetsList(assets, currentFilter);
         // 记录净值快照
         recordSnapshot(assets);

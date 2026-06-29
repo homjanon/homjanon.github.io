@@ -741,6 +741,84 @@ const APIManager = (function() {
     
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     
+    // ==================== 市场指标（VIX + 估值） ====================
+    
+    let indicatorCache = null;
+    let indicatorDate = '';
+    
+    async function fetchIndicators() {
+        const today = new Date().toISOString().slice(0, 10);
+        if (indicatorDate === today && indicatorCache) return indicatorCache;
+        
+        const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null };
+        
+        try {
+            // VIX via Yahoo chart
+            const vixUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d`;
+            const vixData = await fetchAPI(vixUrl);
+            const vixQuote = vixData?.chart?.result?.[0];
+            if (vixQuote) {
+                const vixPrices = vixQuote.indicators?.quote?.[0];
+                const vixMeta = vixQuote.meta;
+                const vixCur = vixMeta?.regularMarketPrice;
+                const vixPrev = vixMeta?.chartPreviousClose;
+                result.vix = {
+                    value: vixCur,
+                    change: vixCur && vixPrev ? vixCur - vixPrev : null,
+                    changePercent: vixCur && vixPrev ? ((vixCur - vixPrev) / vixPrev * 100) : null
+                };
+            }
+        } catch (e) { console.warn('VIX获取失败:', e.message); }
+        
+        try {
+            // QQQ PE (Nasdaq 100 proxy)
+            const qqqUrl = `https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d&includePrePost=false`;
+            const qqqData = await fetchAPI(qqqUrl);
+            const qqqMeta = qqqData?.chart?.result?.[0]?.meta;
+            if (qqqMeta) {
+                result.nasdaqPe = {
+                    value: qqqMeta.trailingPE || qqqMeta.regularMarketPrice,
+                    label: qqqMeta.trailingPE ? '倍' : '点',
+                    price: qqqMeta.regularMarketPrice
+                };
+            }
+        } catch (e) { console.warn('纳指PE获取失败:', e.message); }
+        
+        try {
+            // SPY PE (S&P 500 proxy)
+            const spyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d&includePrePost=false`;
+            const spyData = await fetchAPI(spyUrl);
+            const spyMeta = spyData?.chart?.result?.[0]?.meta;
+            if (spyMeta) {
+                result.sp500Pe = {
+                    value: spyMeta.trailingPE || spyMeta.regularMarketPrice,
+                    label: spyMeta.trailingPE ? '倍' : '点',
+                    price: spyMeta.regularMarketPrice
+                };
+            }
+        } catch (e) { console.warn('标普PE获取失败:', e.message); }
+        
+        try {
+            // CSI 300 PE via 东方财富
+            const csiUrl = `https://push2.eastmoney.com/api/qt/slist/get?spt=1&np=2&fltt=2&invt=2&fields=f2,f3,f9,f20&secids=1.000300`;
+            const csiData = await fetchAPI(csiUrl);
+            const item = csiData?.data?.diff?.[0];
+            if (item) {
+                const pe = parseFloat(item.f20) || parseFloat(item.f9) || parseFloat(item.f2);
+                const chg = parseFloat(item.f3);
+                result.csi300Pe = {
+                    value: pe,
+                    label: '倍',
+                    changePercent: chg || 0
+                };
+            }
+        } catch (e) { console.warn('沪深300 PE获取失败:', e.message); }
+        
+        indicatorCache = result;
+        indicatorDate = today;
+        return result;
+    }
+    
     // ==================== 汇率转换 ====================
     
     let exchangeRates = { USD_CNY: 7.2, HKD_CNY: 0.92 }; // 默认汇率
@@ -888,6 +966,7 @@ const APIManager = (function() {
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,
-        cloudBackup, cloudFetch
+        cloudBackup, cloudFetch,
+        fetchIndicators
     };
 })();
