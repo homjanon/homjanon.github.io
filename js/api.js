@@ -752,43 +752,55 @@ const APIManager = (function() {
         
         const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null };
         
-        // VIX: Yahoo v8 chart（稳健）
+        // VIX: Yahoo v8 chart
         try {
             const vixUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d`;
             const vixData = await fetchAPI(vixUrl);
-            const vixMeta = vixData?.chart?.result?.[0]?.meta;
-            if (vixMeta?.regularMarketPrice) {
+            const m = vixData?.chart?.result?.[0]?.meta;
+            if (m?.regularMarketPrice) {
                 result.vix = {
-                    value: vixMeta.regularMarketPrice,
-                    change: vixMeta.regularMarketPrice - (vixMeta.chartPreviousClose || vixMeta.regularMarketPrice),
-                    changePercent: vixMeta.chartPreviousClose ? ((vixMeta.regularMarketPrice - vixMeta.chartPreviousClose) / vixMeta.chartPreviousClose * 100) : null
+                    value: m.regularMarketPrice,
+                    changePercent: m.chartPreviousClose ? ((m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose * 100) : null
                 };
             }
         } catch (e) { console.warn('VIX获取失败:', e.message); }
         
-        // 纳指100 & 标普500 PE: Yahoo v7 quote（含trailingPE）
+        // 纳指100(QQQ) + 标普500(SPY): Yahoo v8 chart 价格数据
         try {
-            const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=QQQ,SPY`;
-            const quoteData = await fetchAPI(quoteUrl);
-            const results = quoteData?.quoteResponse?.result || [];
-            results.forEach(r => {
-                const pe = r.trailingPE;
-                const obj = { value: pe, label: pe ? '倍' : '--', changePercent: r.regularMarketChangePercent };
-                if (r.symbol === 'QQQ') result.nasdaqPe = obj;
-                if (r.symbol === 'SPY') result.sp500Pe = obj;
-            });
-        } catch (e) { console.warn('美股PE获取失败:', e.message); }
+            const qqqData = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d');
+            const qqqM = qqqData?.chart?.result?.[0]?.meta;
+            if (qqqM?.regularMarketPrice) {
+                result.nasdaqPe = {
+                    value: qqqM.regularMarketPrice,
+                    label: '点',
+                    changePercent: qqqM.chartPreviousClose ? ((qqqM.regularMarketPrice - qqqM.chartPreviousClose) / qqqM.chartPreviousClose * 100) : null
+                };
+            }
+        } catch (e) { console.warn('纳指获取失败:', e.message); }
         
-        // 沪深300 PE: 东方财富 push2（独立数据源）
         try {
-            const csiUrl = `https://push2.eastmoney.com/api/qt/slist/get?spt=1&np=1&fltt=2&invt=2&fields=f2,f3,f20&secids=1.000300`;
+            const spyData = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d');
+            const spyM = spyData?.chart?.result?.[0]?.meta;
+            if (spyM?.regularMarketPrice) {
+                result.sp500Pe = {
+                    value: spyM.regularMarketPrice,
+                    label: '点',
+                    changePercent: spyM.chartPreviousClose ? ((spyM.regularMarketPrice - spyM.chartPreviousClose) / spyM.chartPreviousClose * 100) : null
+                };
+            }
+        } catch (e) { console.warn('标普获取失败:', e.message); }
+        
+        // 沪深300 PE: 东方财富 stock/get
+        try {
+            const csiUrl = `https://push2.eastmoney.com/api/qt/stock/get?secid=1.000300&fields=f43,f115,f170`;
             const csiData = await fetchAPI(csiUrl);
-            const item = csiData?.data?.diff?.[0];
-            if (item) {
+            const d = csiData?.data;
+            if (d && (d.f43 || d.f115)) {
                 result.csi300Pe = {
-                    value: parseFloat(item.f20) || 0,
+                    value: d.f115 || 0,
                     label: '倍',
-                    changePercent: parseFloat(item.f3) || 0
+                    price: (d.f43 || 0) / 100,
+                    changePercent: d.f170 != null ? d.f170 / 100 : null
                 };
             }
         } catch (e) { console.warn('沪深300 PE获取失败:', e.message); }
