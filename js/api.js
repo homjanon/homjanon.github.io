@@ -741,15 +741,22 @@ const APIManager = (function() {
     
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     
-    // ==================== 市场估值指标（统一东方财富） ====================
+    // ==================== 市场估值指标（且慢+VIX） ====================
     
     const INDICATOR_CACHE_KEY = 'investment_indicator_cache';
+    const DJ_INDEX_MAP = {
+        csi300Pe:   'SH000300',
+        star50:     'SZ399006',
+        dividend:      'CSIH30269',
+        nasdaqPe:   'NDX',
+        sp500Pe:    'SP500'
+    };
     
-    function getPELevel(pe, low, mid, high) {
-        if (!pe || pe <= 0) return '';
-        if (pe < low) return '低估';
-        if (pe < mid) return '偏低';
-        if (pe < high) return '偏高';
+    function peLevelFromPercentile(pct) {
+        if (pct == null) return '';
+        if (pct < 30) return '低估';
+        if (pct < 70) return '正常';
+        if (pct < 90) return '偏高';
         return '高估';
     }
     
@@ -776,11 +783,45 @@ const APIManager = (function() {
     
     async function fetchIndicators() {
         const cached = getCachedIndicators();
-        if (cached) return cached;
+        // 缓存有效但部分缺失 → 仅重试缺失项
+        if (cached) {
+            let updated = false;
+            const result = { ...cached };
+            // 重试VIX
+            if (!result.vix) {
+                try {
+                    const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
+                    const m = d?.chart?.result?.[0]?.meta;
+                    if (m?.regularMarketPrice) {
+                        const p = m.regularMarketPrice, pp = m.chartPreviousClose || p;
+                        result.vix = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null };
+                        updated = true;
+                    }
+                } catch (e) {}
+            }
+            // 重试任何缺失的PE指标
+            for (const [key, code] of Object.entries(DJ_INDEX_MAP)) {
+                if (result[key]) continue;
+                try {
+                    const dj = await fetchAPI('https://danjuanfunds.com/djapi/index_eva/dj');
+                    const items = dj?.data?.items;
+                    if (items && Array.isArray(items)) {
+                        const item = items.find(i => i.index_code === code);
+                        if (item && item.pe) {
+                            result[key] = { value: item.pe, label: '倍', level: peLevelFromPercentile(item.pe_percentile), changePercent: null };
+                            updated = true;
+                        }
+                    }
+                    break; // 一次请求修复所有PE
+                } catch (e) {}
+            }
+            if (updated) saveCachedIndicators(result);
+            return result;
+        }
         
         const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         
-        // VIX: Yahoo（东方财富无VIX指数数据）
+        // VIX: Yahoo
         try {
             const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
             const m = d?.chart?.result?.[0]?.meta;
@@ -790,35 +831,19 @@ const APIManager = (function() {
             }
         } catch (e) { console.warn('VIX失败:', e.message); }
         
-        // 美股ETF: 东方财富 push2（免代理直连）
-        // QQQ: 纳斯达克 105, SPY: 纽交所高增长板 107, 价格需/1000
-        const usGet = async (secid) => {
-            try {
-                const d = (await fetchAPI(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f170`))?.data;
-                if (d && d.f43) return { value: d.f43 / 1000, changePercent: d.f170 / 100, label: '', level: '' };
-            } catch (e) {}
-            return null;
-        };
-        const qqq = await usGet('105.QQQ');
-        if (qqq) result.nasdaqPe = qqq;
-        const spy = await usGet('107.SPY');
-        if (spy) result.sp500Pe = spy;
-        
-        // A股指数PE: 东方财富
-        const emGet = async (secid) => {
-            try {
-                const d = (await fetchAPI(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f115,f170`))?.data;
-                if (d && d.f43) return { value: d.f115 || 0, price: d.f43 / 100, changePercent: d.f170 != null ? d.f170 / 100 : null };
-            } catch (e) {}
-            return null;
-        };
-        
-        const csi = await emGet('1.000300');
-        if (csi) result.csi300Pe = { ...csi, label: '倍', level: getPELevel(csi.value, 10, 13, 16) };
-        const div = await emGet('1.000825');
-        if (div) result.dividend = { ...div, label: '倍', level: getPELevel(div.value, 6, 8, 10) };
-        const gem = await emGet('0.399006');
-        if (gem) result.star50 = { ...gem, label: '倍', level: getPELevel(gem.value, 25, 35, 50) };
+        // 五大指数PE: 且慢API（一次请求覆盖纳指标普沪深300创业板红利低波）
+        try {
+            const dj = await fetchAPI('https://danjuanfunds.com/djapi/index_eva/dj');
+            const items = dj?.data?.items;
+            if (items && Array.isArray(items)) {
+                for (const [key, code] of Object.entries(DJ_INDEX_MAP)) {
+                    const item = items.find(i => i.index_code === code);
+                    if (item && item.pe) {
+                        result[key] = { value: item.pe, label: '倍', level: peLevelFromPercentile(item.pe_percentile), changePercent: null };
+                    }
+                }
+            }
+        } catch (e) { console.warn('且慢PE失败:', e.message); }
         
         saveCachedIndicators(result);
         return result;
