@@ -743,10 +743,8 @@ const APIManager = (function() {
     
     // ==================== 市场估值指标 ====================
     
-    let indicatorCache = null;
-    let indicatorCacheKey = '';
+    const INDICATOR_CACHE_KEY = 'investment_indicator_cache';
     
-    // PE分位判断: https:// github.com用户需要确保数据准确
     function getPELevel(pe, low, mid, high) {
         if (!pe || pe <= 0) return '';
         if (pe < low) return '低估';
@@ -755,80 +753,109 @@ const APIManager = (function() {
         return '高估';
     }
     
-    async function fetchIndicators() {
+    function getIndexLevel(pctFromLow) {
+        // pctFromLow = (current - low) / (high - low) * 100
+        if (pctFromLow < 0) return '';
+        if (pctFromLow < 25) return '低位';
+        if (pctFromLow < 50) return '偏低';
+        if (pctFromLow < 75) return '偏高';
+        return '高位';
+    }
+    
+    function getCacheKey() {
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
-        // 每日两时段: 0-12点am, 12-24点pm
         const period = now.getHours() < 12 ? 'am' : 'pm';
-        const cacheKey = today + '-' + period;
-        if (indicatorCacheKey === cacheKey && indicatorCache) return indicatorCache;
+        return today + '-' + period;
+    }
+    
+    function getCachedIndicators() {
+        try {
+            const raw = localStorage.getItem(INDICATOR_CACHE_KEY);
+            if (!raw) return null;
+            const cached = JSON.parse(raw);
+            if (cached.key === getCacheKey()) return cached.data;
+        } catch (e) {}
+        return null;
+    }
+    
+    function saveCachedIndicators(data) {
+        try {
+            localStorage.setItem(INDICATOR_CACHE_KEY, JSON.stringify({ key: getCacheKey(), data }));
+        } catch (e) {}
+    }
+    
+    async function fetchIndicators() {
+        // 本地持久化缓存：半日有效
+        const cached = getCachedIndicators();
+        if (cached) return cached;
         
         const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
-        const cfg = getConfig();
         
         // VIX: Yahoo v8 chart
         try {
-            const vixData = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
-            const m = vixData?.chart?.result?.[0]?.meta;
+            const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
+            const m = d?.chart?.result?.[0]?.meta;
             if (m?.regularMarketPrice) {
-                result.vix = { value: m.regularMarketPrice, changePercent: m.chartPreviousClose ? ((m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose * 100) : null };
+                const p = m.regularMarketPrice, pp = m.chartPreviousClose || p;
+                result.vix = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null };
             }
         } catch (e) { console.warn('VIX失败:', e.message); }
         
-        // 美股PE-TTM: 优先Finnhub, 回退Yahoo chart价格
-        const fhKey = (cfg && cfg.finnhubKey) || '';
-        if (fhKey) {
-            try {
-                const fhUrl = `https://finnhub.io/api/v1/stock/metric?symbol=QQQ&metric=all&token=${fhKey}`;
-                const fhData = await fetchAPI(fhUrl);
-                const peNasdaq = fhData?.metric?.peBasicExclExtraTTM || fhData?.metric?.peTTM;
-                if (peNasdaq) {
-                    result.nasdaqPe = { value: peNasdaq, label: '倍', level: getPELevel(peNasdaq, 20, 25, 30) };
-                }
-            } catch (e) { console.warn('Finnhub QQQ失败:', e.message); }
-            try {
-                const fhUrl2 = `https://finnhub.io/api/v1/stock/metric?symbol=SPY&metric=all&token=${fhKey}`;
-                const fhData2 = await fetchAPI(fhUrl2);
-                const peSp500 = fhData2?.metric?.peBasicExclExtraTTM || fhData2?.metric?.peTTM;
-                if (peSp500) {
-                    result.sp500Pe = { value: peSp500, label: '倍', level: getPELevel(peSp500, 15, 20, 25) };
-                }
-            } catch (e) { console.warn('Finnhub SPY失败:', e.message); }
-        }
-        // Finnhub不可用时回退Yahoo价格
-        if (!result.nasdaqPe) {
-            try {
-                const qqqM = (await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d'))?.chart?.result?.[0]?.meta;
-                if (qqqM?.regularMarketPrice) result.nasdaqPe = { value: qqqM.regularMarketPrice, label: '点', changePercent: qqqM.chartPreviousClose ? ((qqqM.regularMarketPrice - qqqM.chartPreviousClose) / qqqM.chartPreviousClose * 100) : null, level: '' };
-            } catch (e) { console.warn('纳指回退失败:', e.message); }
-        }
-        if (!result.sp500Pe) {
-            try {
-                const spyM = (await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d'))?.chart?.result?.[0]?.meta;
-                if (spyM?.regularMarketPrice) result.sp500Pe = { value: spyM.regularMarketPrice, label: '点', changePercent: spyM.chartPreviousClose ? ((spyM.regularMarketPrice - spyM.chartPreviousClose) / spyM.chartPreviousClose * 100) : null, level: '' };
-            } catch (e) { console.warn('标普回退失败:', e.message); }
-        }
+        // 纳指/标普: Yahoo v8 chart (ETF价格)
+        try {
+            const q = (await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d'))?.chart?.result?.[0]?.meta;
+            if (q?.regularMarketPrice) {
+                const p = q.regularMarketPrice, pp = q.chartPreviousClose || p;
+                result.nasdaqPe = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null, label: '', level: '' };
+            }
+        } catch (e) { console.warn('纳指失败:', e.message); }
+        try {
+            const s = (await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d'))?.chart?.result?.[0]?.meta;
+            if (s?.regularMarketPrice) {
+                const p = s.regularMarketPrice, pp = s.chartPreviousClose || p;
+                result.sp500Pe = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null, label: '', level: '' };
+            }
+        } catch (e) { console.warn('标普失败:', e.message); }
         
-        // A股指数PE: 东方财富 stock/get
-        const emFetch = async (secid, key) => {
+        // A股指数: 东方财富 push2 stock/get + 雪球补充
+        const emGet = async (secid) => {
             try {
                 const d = (await fetchAPI(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f115,f170`))?.data;
-                if (d && d.f43) {
-                    result[key] = { value: d.f115 || 0, label: '倍', price: d.f43 / 100, changePercent: d.f170 != null ? d.f170 / 100 : null };
-                }
-            } catch (e) { console.warn(key + '失败:', e.message); }
+                if (d && d.f43) return { value: d.f115 || 0, price: d.f43 / 100, changePercent: d.f170 != null ? d.f170 / 100 : null };
+            } catch (e) {}
+            return null;
         };
-        await emFetch('1.000300', 'csi300Pe');
-        await emFetch('1.000688', 'star50');
-        await emFetch('1.000825', 'dividend');
         
-        // 计算PE分位
-        if (result.csi300Pe && result.csi300Pe.value) result.csi300Pe.level = getPELevel(result.csi300Pe.value, 10, 13, 16);
-        if (result.star50 && result.star50.value) result.star50.level = getPELevel(result.star50.value, 35, 45, 55);
-        if (result.dividend && result.dividend.value) result.dividend.level = getPELevel(result.dividend.value, 6, 8, 10);
+        // 雪球获取52周高低
+        const xqGet = async (symbol) => {
+            try {
+                const r = (await fetchAPI(`https://stock.xueqiu.com/v5/stock/batch/quote.json?symbol=${symbol}&extend=detail`))?.data?.items?.[0]?.quote;
+                if (r) return { current: r.current, high52: r.high52w, low52: r.low52w };
+            } catch (e) {}
+            return null;
+        };
         
-        indicatorCache = result;
-        indicatorCacheKey = cacheKey;
+        // 沪深300
+        const csi = await emGet('1.000300');
+        if (csi) result.csi300Pe = { ...csi, label: '倍', level: getPELevel(csi.value, 10, 13, 16) };
+        
+        // 红利低波100
+        const div = await emGet('1.000825');
+        if (div) result.dividend = { ...div, label: '倍', level: getPELevel(div.value, 6, 8, 10) };
+        
+        // 科创50: 指数价格 + 52周分位
+        const star = await emGet('1.000688');
+        if (star && star.price > 0) {
+            result.star50 = { value: star.price, changePercent: star.changePercent, label: '', level: '' };
+            const xq = await xqGet('SH000688');
+            if (xq && xq.high52 && xq.low52) {
+                const pct = ((xq.current - xq.low52) / (xq.high52 - xq.low52) * 100);
+                result.star50.level = getIndexLevel(pct);
+            }
+        }
+        
+        saveCachedIndicators(result);
         return result;
     }
     
