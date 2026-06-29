@@ -48,6 +48,7 @@ const App = (function() {
         document.getElementById('btn-import').addEventListener('click', () => document.getElementById('import-file').click());
         document.getElementById('btn-cloud-backup').addEventListener('click', () => cloudBackup());
         document.getElementById('btn-cloud-import').addEventListener('click', () => cloudImport());
+        document.getElementById('config-clear-all').addEventListener('click', () => clearAllData());
         document.getElementById('import-file').addEventListener('change', (e) => {
             if (e.target.files[0]) importData(e.target.files[0]);
             e.target.value = '';
@@ -448,6 +449,16 @@ const App = (function() {
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
         hideModal('modal-config');
+    }
+    
+    // 清除所有数据
+    function clearAllData() {
+        if (!confirm('确定要清除所有资产和配置数据吗？此操作不可恢复！')) return;
+        StorageManager.clearAllData();
+        const keys = ['investment_tracker_config', 'investment_indicator_cache'];
+        keys.forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+        UIManager.showToast('已清除所有数据', 'success');
+        render();
     }
     
     // 导出数据
