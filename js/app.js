@@ -17,6 +17,7 @@ const App = (function() {
         try { await APIManager.fetchExchangeRates(); } catch(e) {}
         
         render();
+        UIManager.renderTabs('all');
         UIManager.updateLastUpdateTime();
         console.log('初始化完成');
     }

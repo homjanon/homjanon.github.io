@@ -752,64 +752,43 @@ const APIManager = (function() {
         
         const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null };
         
+        // VIX: Yahoo v8 chart（稳健）
         try {
-            // VIX via Yahoo chart
             const vixUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d`;
             const vixData = await fetchAPI(vixUrl);
-            const vixQuote = vixData?.chart?.result?.[0];
-            if (vixQuote) {
-                const vixPrices = vixQuote.indicators?.quote?.[0];
-                const vixMeta = vixQuote.meta;
-                const vixCur = vixMeta?.regularMarketPrice;
-                const vixPrev = vixMeta?.chartPreviousClose;
+            const vixMeta = vixData?.chart?.result?.[0]?.meta;
+            if (vixMeta?.regularMarketPrice) {
                 result.vix = {
-                    value: vixCur,
-                    change: vixCur && vixPrev ? vixCur - vixPrev : null,
-                    changePercent: vixCur && vixPrev ? ((vixCur - vixPrev) / vixPrev * 100) : null
+                    value: vixMeta.regularMarketPrice,
+                    change: vixMeta.regularMarketPrice - (vixMeta.chartPreviousClose || vixMeta.regularMarketPrice),
+                    changePercent: vixMeta.chartPreviousClose ? ((vixMeta.regularMarketPrice - vixMeta.chartPreviousClose) / vixMeta.chartPreviousClose * 100) : null
                 };
             }
         } catch (e) { console.warn('VIX获取失败:', e.message); }
         
+        // 纳指100 & 标普500 PE: Yahoo v7 quote（含trailingPE）
         try {
-            // QQQ PE (Nasdaq 100 proxy)
-            const qqqUrl = `https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d&includePrePost=false`;
-            const qqqData = await fetchAPI(qqqUrl);
-            const qqqMeta = qqqData?.chart?.result?.[0]?.meta;
-            if (qqqMeta) {
-                result.nasdaqPe = {
-                    value: qqqMeta.trailingPE || qqqMeta.regularMarketPrice,
-                    label: qqqMeta.trailingPE ? '倍' : '点',
-                    price: qqqMeta.regularMarketPrice
-                };
-            }
-        } catch (e) { console.warn('纳指PE获取失败:', e.message); }
+            const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=QQQ,SPY`;
+            const quoteData = await fetchAPI(quoteUrl);
+            const results = quoteData?.quoteResponse?.result || [];
+            results.forEach(r => {
+                const pe = r.trailingPE;
+                const obj = { value: pe, label: pe ? '倍' : '--', changePercent: r.regularMarketChangePercent };
+                if (r.symbol === 'QQQ') result.nasdaqPe = obj;
+                if (r.symbol === 'SPY') result.sp500Pe = obj;
+            });
+        } catch (e) { console.warn('美股PE获取失败:', e.message); }
         
+        // 沪深300 PE: 东方财富 push2（独立数据源）
         try {
-            // SPY PE (S&P 500 proxy)
-            const spyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d&includePrePost=false`;
-            const spyData = await fetchAPI(spyUrl);
-            const spyMeta = spyData?.chart?.result?.[0]?.meta;
-            if (spyMeta) {
-                result.sp500Pe = {
-                    value: spyMeta.trailingPE || spyMeta.regularMarketPrice,
-                    label: spyMeta.trailingPE ? '倍' : '点',
-                    price: spyMeta.regularMarketPrice
-                };
-            }
-        } catch (e) { console.warn('标普PE获取失败:', e.message); }
-        
-        try {
-            // CSI 300 PE via 东方财富
-            const csiUrl = `https://push2.eastmoney.com/api/qt/slist/get?spt=1&np=2&fltt=2&invt=2&fields=f2,f3,f9,f20&secids=1.000300`;
+            const csiUrl = `https://push2.eastmoney.com/api/qt/slist/get?spt=1&np=1&fltt=2&invt=2&fields=f2,f3,f20&secids=1.000300`;
             const csiData = await fetchAPI(csiUrl);
             const item = csiData?.data?.diff?.[0];
             if (item) {
-                const pe = parseFloat(item.f20) || parseFloat(item.f9) || parseFloat(item.f2);
-                const chg = parseFloat(item.f3);
                 result.csi300Pe = {
-                    value: pe,
+                    value: parseFloat(item.f20) || 0,
                     label: '倍',
-                    changePercent: chg || 0
+                    changePercent: parseFloat(item.f3) || 0
                 };
             }
         } catch (e) { console.warn('沪深300 PE获取失败:', e.message); }
