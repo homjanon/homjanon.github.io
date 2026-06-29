@@ -741,72 +741,94 @@ const APIManager = (function() {
     
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     
-    // ==================== 市场指标（VIX + 估值） ====================
+    // ==================== 市场估值指标 ====================
     
     let indicatorCache = null;
-    let indicatorDate = '';
+    let indicatorCacheKey = '';
+    
+    // PE分位判断: https:// github.com用户需要确保数据准确
+    function getPELevel(pe, low, mid, high) {
+        if (!pe || pe <= 0) return '';
+        if (pe < low) return '低估';
+        if (pe < mid) return '偏低';
+        if (pe < high) return '偏高';
+        return '高估';
+    }
     
     async function fetchIndicators() {
-        const today = new Date().toISOString().slice(0, 10);
-        if (indicatorDate === today && indicatorCache) return indicatorCache;
+        const now = new Date();
+        const today = now.toISOString().slice(0, 10);
+        // 每日两时段: 0-12点am, 12-24点pm
+        const period = now.getHours() < 12 ? 'am' : 'pm';
+        const cacheKey = today + '-' + period;
+        if (indicatorCacheKey === cacheKey && indicatorCache) return indicatorCache;
         
-        const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null };
+        const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
+        const cfg = getConfig();
         
         // VIX: Yahoo v8 chart
         try {
-            const vixUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d`;
-            const vixData = await fetchAPI(vixUrl);
+            const vixData = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
             const m = vixData?.chart?.result?.[0]?.meta;
             if (m?.regularMarketPrice) {
-                result.vix = {
-                    value: m.regularMarketPrice,
-                    changePercent: m.chartPreviousClose ? ((m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose * 100) : null
-                };
+                result.vix = { value: m.regularMarketPrice, changePercent: m.chartPreviousClose ? ((m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose * 100) : null };
             }
-        } catch (e) { console.warn('VIX获取失败:', e.message); }
+        } catch (e) { console.warn('VIX失败:', e.message); }
         
-        // 纳指100(QQQ) + 标普500(SPY): Yahoo v8 chart 价格数据
-        try {
-            const qqqData = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d');
-            const qqqM = qqqData?.chart?.result?.[0]?.meta;
-            if (qqqM?.regularMarketPrice) {
-                result.nasdaqPe = {
-                    value: qqqM.regularMarketPrice,
-                    label: '点',
-                    changePercent: qqqM.chartPreviousClose ? ((qqqM.regularMarketPrice - qqqM.chartPreviousClose) / qqqM.chartPreviousClose * 100) : null
-                };
-            }
-        } catch (e) { console.warn('纳指获取失败:', e.message); }
+        // 美股PE-TTM: 优先Finnhub, 回退Yahoo chart价格
+        const fhKey = (cfg && cfg.finnhubKey) || '';
+        if (fhKey) {
+            try {
+                const fhUrl = `https://finnhub.io/api/v1/stock/metric?symbol=QQQ&metric=all&token=${fhKey}`;
+                const fhData = await fetchAPI(fhUrl);
+                const peNasdaq = fhData?.metric?.peBasicExclExtraTTM || fhData?.metric?.peTTM;
+                if (peNasdaq) {
+                    result.nasdaqPe = { value: peNasdaq, label: '倍', level: getPELevel(peNasdaq, 20, 25, 30) };
+                }
+            } catch (e) { console.warn('Finnhub QQQ失败:', e.message); }
+            try {
+                const fhUrl2 = `https://finnhub.io/api/v1/stock/metric?symbol=SPY&metric=all&token=${fhKey}`;
+                const fhData2 = await fetchAPI(fhUrl2);
+                const peSp500 = fhData2?.metric?.peBasicExclExtraTTM || fhData2?.metric?.peTTM;
+                if (peSp500) {
+                    result.sp500Pe = { value: peSp500, label: '倍', level: getPELevel(peSp500, 15, 20, 25) };
+                }
+            } catch (e) { console.warn('Finnhub SPY失败:', e.message); }
+        }
+        // Finnhub不可用时回退Yahoo价格
+        if (!result.nasdaqPe) {
+            try {
+                const qqqM = (await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d'))?.chart?.result?.[0]?.meta;
+                if (qqqM?.regularMarketPrice) result.nasdaqPe = { value: qqqM.regularMarketPrice, label: '点', changePercent: qqqM.chartPreviousClose ? ((qqqM.regularMarketPrice - qqqM.chartPreviousClose) / qqqM.chartPreviousClose * 100) : null, level: '' };
+            } catch (e) { console.warn('纳指回退失败:', e.message); }
+        }
+        if (!result.sp500Pe) {
+            try {
+                const spyM = (await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d'))?.chart?.result?.[0]?.meta;
+                if (spyM?.regularMarketPrice) result.sp500Pe = { value: spyM.regularMarketPrice, label: '点', changePercent: spyM.chartPreviousClose ? ((spyM.regularMarketPrice - spyM.chartPreviousClose) / spyM.chartPreviousClose * 100) : null, level: '' };
+            } catch (e) { console.warn('标普回退失败:', e.message); }
+        }
         
-        try {
-            const spyData = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d');
-            const spyM = spyData?.chart?.result?.[0]?.meta;
-            if (spyM?.regularMarketPrice) {
-                result.sp500Pe = {
-                    value: spyM.regularMarketPrice,
-                    label: '点',
-                    changePercent: spyM.chartPreviousClose ? ((spyM.regularMarketPrice - spyM.chartPreviousClose) / spyM.chartPreviousClose * 100) : null
-                };
-            }
-        } catch (e) { console.warn('标普获取失败:', e.message); }
+        // A股指数PE: 东方财富 stock/get
+        const emFetch = async (secid, key) => {
+            try {
+                const d = (await fetchAPI(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f115,f170`))?.data;
+                if (d && d.f43) {
+                    result[key] = { value: d.f115 || 0, label: '倍', price: d.f43 / 100, changePercent: d.f170 != null ? d.f170 / 100 : null };
+                }
+            } catch (e) { console.warn(key + '失败:', e.message); }
+        };
+        await emFetch('1.000300', 'csi300Pe');
+        await emFetch('1.000688', 'star50');
+        await emFetch('1.000825', 'dividend');
         
-        // 沪深300 PE: 东方财富 stock/get
-        try {
-            const csiUrl = `https://push2.eastmoney.com/api/qt/stock/get?secid=1.000300&fields=f43,f115,f170`;
-            const csiData = await fetchAPI(csiUrl);
-            const d = csiData?.data;
-            if (d && (d.f43 || d.f115)) {
-                result.csi300Pe = {
-                    value: d.f115 || 0,
-                    label: '倍',
-                    price: (d.f43 || 0) / 100,
-                    changePercent: d.f170 != null ? d.f170 / 100 : null
-                };
-            }
-        } catch (e) { console.warn('沪深300 PE获取失败:', e.message); }
+        // 计算PE分位
+        if (result.csi300Pe && result.csi300Pe.value) result.csi300Pe.level = getPELevel(result.csi300Pe.value, 10, 13, 16);
+        if (result.star50 && result.star50.value) result.star50.level = getPELevel(result.star50.value, 35, 45, 55);
+        if (result.dividend && result.dividend.value) result.dividend.level = getPELevel(result.dividend.value, 6, 8, 10);
         
         indicatorCache = result;
-        indicatorDate = today;
+        indicatorCacheKey = cacheKey;
         return result;
     }
     

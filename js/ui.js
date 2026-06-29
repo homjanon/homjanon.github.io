@@ -334,13 +334,17 @@ const UIManager = (function() {
         const data = await APIManager.fetchIndicators();
         if (!data) return;
         
-        const setCard = (id, datum, unit, format) => {
+        const setCard = (id, datum) => {
             const elVal = document.getElementById(id + '-value');
             const elChg = document.getElementById(id + '-change');
             if (!elVal) return;
             
             if (datum && datum.value != null) {
-                elVal.textContent = format ? format(datum.value) : datum.value.toFixed(2);
+                const lbl = datum.label || '';
+                let text = datum.value.toFixed(1) + lbl;
+                if (datum.level) text += ' · ' + datum.level;
+                elVal.textContent = text;
+                
                 if (elChg && datum.changePercent != null) {
                     const sign = datum.changePercent >= 0 ? '+' : '';
                     const cls = datum.changePercent >= 0 ? 'up' : 'down';
@@ -350,19 +354,12 @@ const UIManager = (function() {
             }
         };
         
-        setCard('ind-vix', data.vix, '%', v => v.toFixed(1));
-        setCard('ind-nasdaq', data.nasdaqPe, '倍', v => {
-            const lbl = data.nasdaqPe?.label || '';
-            return v ? v.toFixed(1) + lbl : '--';
-        });
-        setCard('ind-sp500', data.sp500Pe, '倍', v => {
-            const lbl = data.sp500Pe?.label || '';
-            return v ? v.toFixed(1) + lbl : '--';
-        });
-        setCard('ind-csi300', data.csi300Pe, '倍', v => {
-            const lbl = data.csi300Pe?.label || '';
-            return v ? v.toFixed(1) + lbl : '--';
-        });
+        setCard('ind-vix', data.vix);
+        setCard('ind-nasdaq', data.nasdaqPe);
+        setCard('ind-sp500', data.sp500Pe);
+        setCard('ind-csi300', data.csi300Pe);
+        setCard('ind-star50', data.star50);
+        setCard('ind-dividend', data.dividend);
     }
     
     function renderHistoryChart() {
