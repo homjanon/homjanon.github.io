@@ -752,13 +752,7 @@ const APIManager = (function() {
         sp500Pe:    'SP500'
     };
     
-    function peLevelFromPercentile(pct) {
-        if (pct == null) return '';
-        if (pct < 30) return '低估';
-        if (pct < 70) return '正常';
-        if (pct < 90) return '偏高';
-        return '高估';
-    }
+    const LEVEL_MAP = { low: '低估', middle: '正常', high: '高估' };
     
     function getCacheKey() {
         const now = new Date();
@@ -781,71 +775,52 @@ const APIManager = (function() {
         try { localStorage.setItem(INDICATOR_CACHE_KEY, JSON.stringify({ key: getCacheKey(), data })); } catch (e) {}
     }
     
+    // 缓存完整（所有key都有值）则直接返回，不做任何网络请求
+    function isCacheComplete(data) {
+        if (!data || !data.vix) return false;  // VIX必须有（Yahoo不稳定允许缺失）
+        // PE至少要有几个核心的
+        const keys = ['csi300Pe', 'nasdaqPe', 'sp500Pe'];
+        return keys.every(k => data[k] && data[k].value != null);
+    }
+    
     async function fetchIndicators() {
         const cached = getCachedIndicators();
-        // 缓存有效但部分缺失 → 仅重试缺失项
-        if (cached) {
-            let updated = false;
-            const result = { ...cached };
-            // 重试VIX
-            if (!result.vix) {
-                try {
-                    const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
-                    const m = d?.chart?.result?.[0]?.meta;
-                    if (m?.regularMarketPrice) {
-                        const p = m.regularMarketPrice, pp = m.chartPreviousClose || p;
-                        result.vix = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null };
-                        updated = true;
-                    }
-                } catch (e) {}
-            }
-            // 重试任何缺失的PE指标
-            for (const [key, code] of Object.entries(DJ_INDEX_MAP)) {
-                if (result[key]) continue;
-                try {
-                    const dj = await fetchAPI('https://danjuanfunds.com/djapi/index_eva/dj');
-                    const items = dj?.data?.items;
-                    if (items && Array.isArray(items)) {
-                        const item = items.find(i => i.index_code === code);
-                        if (item && item.pe) {
-                            result[key] = { value: item.pe, label: '倍', level: peLevelFromPercentile(item.pe_percentile), changePercent: null };
-                            updated = true;
-                        }
-                    }
-                    break; // 一次请求修复所有PE
-                } catch (e) {}
-            }
-            if (updated) saveCachedIndicators(result);
-            return result;
+        if (cached && isCacheComplete(cached)) return cached;
+        
+        const result = cached ? { ...cached } : { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
+        let hasNew = false;
+        
+        // VIX: Yahoo（仅在缺失或缓存过期时重试）
+        if (!result.vix || !cached) {
+            try {
+                const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
+                const m = d?.chart?.result?.[0]?.meta;
+                if (m?.regularMarketPrice) {
+                    const p = m.regularMarketPrice, pp = m.chartPreviousClose || p;
+                    result.vix = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null };
+                    hasNew = true;
+                }
+            } catch (e) { console.warn('VIX失败:', e.message); }
         }
         
-        const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
-        
-        // VIX: Yahoo
-        try {
-            const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
-            const m = d?.chart?.result?.[0]?.meta;
-            if (m?.regularMarketPrice) {
-                const p = m.regularMarketPrice, pp = m.chartPreviousClose || p;
-                result.vix = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null };
-            }
-        } catch (e) { console.warn('VIX失败:', e.message); }
-        
-        // 五大指数PE: 且慢API（一次请求覆盖纳指标普沪深300创业板红利低波）
-        try {
-            const dj = await fetchAPI('https://danjuanfunds.com/djapi/index_eva/dj');
-            const items = dj?.data?.items;
-            if (items && Array.isArray(items)) {
-                for (const [key, code] of Object.entries(DJ_INDEX_MAP)) {
-                    const item = items.find(i => i.index_code === code);
-                    if (item && item.pe) {
-                        result[key] = { value: item.pe, label: '倍', level: peLevelFromPercentile(item.pe_percentile), changePercent: null };
+        // 五大指数PE: 且慢API
+        if (!cached || !result.csi300Pe) {
+            try {
+                const dj = await fetchAPI('https://danjuanfunds.com/djapi/index_eva/dj');
+                const items = dj?.data?.items;
+                if (items && Array.isArray(items)) {
+                    for (const [key, code] of Object.entries(DJ_INDEX_MAP)) {
+                        const item = items.find(i => i.index_code === code);
+                        if (item && item.pe) {
+                            result[key] = { value: item.pe, label: '倍', level: LEVEL_MAP[item.eva_type] || '', changePercent: null };
+                            hasNew = true;
+                        }
                     }
                 }
-            }
-        } catch (e) { console.warn('且慢PE失败:', e.message); }
+            } catch (e) { console.warn('且慢PE失败:', e.message); }
+        }
         
-        saveCachedIndicators(result);
+        if (hasNew) saveCachedIndicators(result);
         return result;
     }
     
