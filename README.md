@@ -1,96 +1,101 @@
 # 个人投资管理系统
 
-纯前端单页应用，管理 **A股、港股、美股、基金** 的持仓和盈亏。大部分数据源零配置直连，开箱即用。
+纯前端单页应用，管理 **A股 / 港股 / 美股 / 场外基金** 的持仓和盈亏。大部分数据源零配置直连，开箱即用。
 
-## 数据源
-
-| 模式 | 股票 | 基金 |
-|------|------|------|
-| **默认** | 腾讯财经 qt.gtimg.cn (HTTPS直连) | 天天基金 JSONP → 失败回退东方财富历史净值 → 再回退代理 |
-| **备选** | 同上 | 东方财富历史净值 (`<script>` 注入) |
-| **备用API** | Finnhub(美股) + 必盈(A股) + Yahoo(港股) | 天天基金 → 代理 |
-
-> ⚙️ 设置中取消勾选默认即切换为备用 API。基金备选覆盖 006327/006328 等天天基金不支持的 QDII 联接基金。
-
-## 功能
+## 功能概览
 
 - **四市场覆盖**：A股 / 港股 / 美股 / 场外基金
-- **零配置开箱即用**：默认腾讯财经 + 天天基金 JSONP，无需 API Key
-- **基金兜底**：天天基金不支持 006327/006328 时自动回退东方财富历史净值
-- **智能识别**：输入代码自动判断市场（字母→美股，1-5位→港股，6位→A股）
-- **港股模糊输入**：`3968` 和 `03968` 都能查到招商银行
-- **多币种显示**：美股 $ / 港股 HK$ / A股基金 ¥，总览统一人民币
-- **当日收益**：含时区修正，非交易时段置灰
-- **自定义品种分类**：默认红利/纳指100/标普500，可自行添加
-- **净值走势图**：每日自动快照（最多 90 天折线图）
+- **三级路由模式**：零配置腾讯/东方财富 → 腾讯/天天基金 → API Key 备用
+- **市场估值指标**：VIX 恐慌指数 + 纳指100/标普500/沪深300/创业板/红利低波 PE（TTM），基于且慢历史百分位分类
+- **智能代码识别**：字母→美股，1-5位→港股，6位→A股
+- **多币种换算**：美股 $ / 港股 HK$ / A股基金 ¥，总览统一人民币
+- **当日收益**：含时区修正，非交易时段显示休市状态
+- **自定义分类**：默认红利/纳指100/标普500，可自行添加
 - **饼图**：市场分布 + 品种分布（人民币换算）
-- **数据导出/导入**：JSON 备份恢复
+- **云端备份**：JSONBin 一键备份/导入，跨设备同步
+- **数据导出/导入**：JSON 文件备份恢复
 - **PWA**：可添加到主屏幕，离线缓存
-- **响应式**：桌面 4 列 / 平板 2-3 列 / 手机 1 列
+- **响应式**：桌面 / 平板 / 手机自适应
+
+---
 
 ## 快速开始
 
 ### GitHub Pages
 
-1. 创建 Public 仓库，上传所有文件
+1. Fork 或创建 Public 仓库，上传所有文件
 2. Settings → Pages → 选 `main` 分支 → Save
 3. 打开 `https://用户名.github.io/仓库名/`，直接使用
 
 ### 本地运行
 
 ```bash
+# 任意静态服务器
 python -m http.server 8080
-# 或直接用浏览器打开 index.html
+# 或直接用浏览器打开 index.html（部分功能需 localhost）
 ```
+
+---
+
+## 数据路由
+
+| 路线 | 勾选 | 股票 | 基金 |
+|------|------|------|------|
+| **一（默认）** | 路线一 ✓ | 腾讯财经 qt.gtimg.cn | 东方财富 push2 |
+| **二** | 路线一 ✓ + 路线二 ✓ | 腾讯财经 | 天天基金 JSONP 实时估值 |
+| **三** | 都不勾 | Finnhub(美股) + 必盈(A股) + Yahoo(港股) | 东方财富 |
+
+> 路线一和二免 API Key 开箱即用。路线三需自行申请 Finnhub 和必盈 Key。
+
+### 市场估值指标
+
+| 指标 | 数据源 | 刷新策略 |
+|------|--------|----------|
+| **VIX 恐慌指数** | Yahoo Finance v8 | 每日 0-12 点 / 12-24 点各取一次 |
+| **纳指100 PE** | 且慢 danjuanfunds.com | 同上 |
+| **标普500 PE** | 且慢 | 同上 |
+| **沪深300 PE** | 且慢 | 同上 |
+| **创业板 PE** | 且慢 | 同上 |
+| **红利低波 PE** | 且慢 | 同上 |
+
+PE 分位直接使用且慢内置 `eva_type` 分类（低估 / 正常 / 高估），数据每天分两个时段缓存，同半日内刷新浏览器不丢失。
+
+---
 
 ## 设置
 
-默认模式**无需任何配置**。
-
-### 基金备选（东方财富历史净值）
-
-在 ⚙️ 设置中勾选「基金备选：东方财富历史净值」后，所有基金改走东方财富 `<script>` 注入方式。适用于天天基金不支持的 QDII 联接基金。
-
-### 备用 API（取消默认勾选后启用）
+### API Key（路线三）
 
 | 配置项 | 用途 | 获取方式 |
 |--------|------|---------|
-| Finnhub API Key | 美股 | [finnhub.io](https://finnhub.io) 免费注册 |
-| 必盈API Licence | A股 | [biyingapi.com](https://www.biyingapi.com) |
-| CORS代理URL | 港股 + 基金 | 默认 corsproxy.io，或自建 Worker |
+| Finnhub API Key | 美股行情 | [finnhub.io](https://finnhub.io) 免费注册 |
+| 必盈 API Licence | A股行情 | [biyingapi.com](https://www.biyingapi.com) |
+| CORS 代理 URL | 港股 + 基金回退 | 默认 corsproxy.io，或自建 Cloudflare Worker |
 
-### CORS 代理（选填）
+> 路线一、二无需任何 API Key。
 
-基金 JSONP 优先直连，失败时自动回退到代理。默认 corsproxy.io，也可自建 Cloudflare Worker：
+### 云端备份
 
-```javascript
-// proxy-worker.js
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
-    const target = url.searchParams.get('url');
-    if (!target) return new Response('Missing ?url=', { status: 400 });
-    const resp = await fetch(target, {
-      headers: { 'Referer': new URL(target).origin + '/' }
-    });
-    return new Response(resp.body, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': resp.headers.get('Content-Type') || 'text/plain'
-      }
-    });
-  }
-};
-```
+1. 注册 [JSONBin.io](https://jsonbin.io) → API Keys 获取 Master Key
+2. 在设置页填入 Key，点击「☁️ 备份到云端」
+3. Bin ID 自动保存。换设备时粘贴同一个 Key + Bin ID 即可导入
+
+### 清除数据
+
+设置页底部的「🗑️ 清除所有数据」会清除全部资产、配置和指标缓存。
+
+---
 
 ## 使用
 
-1. 点击「添加资产」，输入代码，自动识别市场
+1. 点击「添加资产」，输入代码自动识别市场
 2. 点击「查询」获取名称和最新价
 3. 填写成本价和持有数量，保存
 4. 卡片上的「刷新」更新单个资产
-5. 顶部「刷新数据」批量刷新
-6. 📥 导出 / 📤 导入 备份恢复数据
+5. 顶部「刷新数据」批量刷新全部资产 + 市场指标
+6. 📥 导出 / 📤 导入 JSON 文件备份恢复
+
+---
 
 ## 文件结构
 
@@ -98,18 +103,20 @@ export default {
 ├── index.html          # 主页
 ├── manifest.json       # PWA 配置
 ├── sw.js              # Service Worker
-├── proxy-worker.js    # Cloudflare Worker 代码
 ├── css/style.css      # 样式
 ├── js/
-│   ├── storage.js     # 本地存储
-│   ├── api.js         # API（腾讯/天天基金/东方财富/必盈/Finnhub）
-│   ├── ui.js          # UI 渲染
-│   └── app.js         # 主逻辑
+│   ├── storage.js     # 本地存储（localStorage）
+│   ├── api.js         # API 层（腾讯/天天基金/东方财富/且慢/Yahoo/JSONBin）
+│   ├── ui.js          # UI 渲染（资产列表/饼图/指标卡）
+│   └── app.js         # 主逻辑（初始化/事件/刷新/导入导出）
 └── README.md
 ```
 
+---
+
 ## 注意事项
 
-- 数据保存在 localStorage，清缓存会丢失，请定期导出
-- 天天基金和东方财富均为免费公开接口，不保证永久可用
-- **免责声明：不构成投资建议，仅供参考**
+- 数据保存在浏览器 localStorage，清缓存会丢失，请定期云端或文件备份
+- 数据接口均为公开免费来源，不保证永久可用
+- 市场估值仅供投资参考，不构成任何买卖建议
+- **免责声明：本工具不构成投资建议，投资有风险，决策需谨慎**
