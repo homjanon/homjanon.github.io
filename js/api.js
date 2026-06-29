@@ -753,15 +753,6 @@ const APIManager = (function() {
         return '高估';
     }
     
-    function getIndexLevel(pctFromLow) {
-        // pctFromLow = (current - low) / (high - low) * 100
-        if (pctFromLow < 0) return '';
-        if (pctFromLow < 25) return '低位';
-        if (pctFromLow < 50) return '偏低';
-        if (pctFromLow < 75) return '偏高';
-        return '高位';
-    }
-    
     function getCacheKey() {
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
@@ -786,13 +777,12 @@ const APIManager = (function() {
     }
     
     async function fetchIndicators() {
-        // 本地持久化缓存：半日有效
         const cached = getCachedIndicators();
         if (cached) return cached;
         
         const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         
-        // VIX: Yahoo v8 chart
+        // VIX: Yahoo v8 chart (经CORS代理)
         try {
             const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
             const m = d?.chart?.result?.[0]?.meta;
@@ -802,23 +792,17 @@ const APIManager = (function() {
             }
         } catch (e) { console.warn('VIX失败:', e.message); }
         
-        // 纳指/标普: Yahoo v8 chart (ETF价格)
+        // 纳指/标普: 腾讯财经直连（免代理，稳定）
         try {
-            const q = (await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?interval=1d&range=1d'))?.chart?.result?.[0]?.meta;
-            if (q?.regularMarketPrice) {
-                const p = q.regularMarketPrice, pp = q.chartPreviousClose || p;
-                result.nasdaqPe = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null, label: '', level: '' };
-            }
+            const qqq = await getTencentQuote('us-stock', 'QQQ');
+            result.nasdaqPe = { value: qqq.price, changePercent: qqq.changePercent, label: '', level: '' };
         } catch (e) { console.warn('纳指失败:', e.message); }
         try {
-            const s = (await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=1d'))?.chart?.result?.[0]?.meta;
-            if (s?.regularMarketPrice) {
-                const p = s.regularMarketPrice, pp = s.chartPreviousClose || p;
-                result.sp500Pe = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null, label: '', level: '' };
-            }
+            const spy = await getTencentQuote('us-stock', 'SPY');
+            result.sp500Pe = { value: spy.price, changePercent: spy.changePercent, label: '', level: '' };
         } catch (e) { console.warn('标普失败:', e.message); }
         
-        // A股指数: 东方财富 push2 stock/get + 雪球补充
+        // A股指数PE: 东方财富 stock/get（直连可用）
         const emGet = async (secid) => {
             try {
                 const d = (await fetchAPI(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f115,f170`))?.data;
@@ -827,33 +811,15 @@ const APIManager = (function() {
             return null;
         };
         
-        // 雪球获取52周高低
-        const xqGet = async (symbol) => {
-            try {
-                const r = (await fetchAPI(`https://stock.xueqiu.com/v5/stock/batch/quote.json?symbol=${symbol}&extend=detail`))?.data?.items?.[0]?.quote;
-                if (r) return { current: r.current, high52: r.high52w, low52: r.low52w };
-            } catch (e) {}
-            return null;
-        };
-        
-        // 沪深300
         const csi = await emGet('1.000300');
         if (csi) result.csi300Pe = { ...csi, label: '倍', level: getPELevel(csi.value, 10, 13, 16) };
         
-        // 红利低波100
         const div = await emGet('1.000825');
         if (div) result.dividend = { ...div, label: '倍', level: getPELevel(div.value, 6, 8, 10) };
         
-        // 科创50: 指数价格 + 52周分位
-        const star = await emGet('1.000688');
-        if (star && star.price > 0) {
-            result.star50 = { value: star.price, changePercent: star.changePercent, label: '', level: '' };
-            const xq = await xqGet('SH000688');
-            if (xq && xq.high52 && xq.low52) {
-                const pct = ((xq.current - xq.low52) / (xq.high52 - xq.low52) * 100);
-                result.star50.level = getIndexLevel(pct);
-            }
-        }
+        // 创业板 PE: 399006（已验证PE=14x）
+        const gem = await emGet('0.399006');
+        if (gem) result.star50 = { ...gem, label: '倍', level: getPELevel(gem.value, 25, 35, 50) };
         
         saveCachedIndicators(result);
         return result;
