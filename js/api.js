@@ -741,7 +741,7 @@ const APIManager = (function() {
     
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     
-    // ==================== 市场估值指标 ====================
+    // ==================== 市场估值指标（统一东方财富） ====================
     
     const INDICATOR_CACHE_KEY = 'investment_indicator_cache';
     
@@ -771,9 +771,7 @@ const APIManager = (function() {
     }
     
     function saveCachedIndicators(data) {
-        try {
-            localStorage.setItem(INDICATOR_CACHE_KEY, JSON.stringify({ key: getCacheKey(), data }));
-        } catch (e) {}
+        try { localStorage.setItem(INDICATOR_CACHE_KEY, JSON.stringify({ key: getCacheKey(), data })); } catch (e) {}
     }
     
     async function fetchIndicators() {
@@ -782,7 +780,7 @@ const APIManager = (function() {
         
         const result = { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         
-        // VIX: Yahoo v8 chart (经CORS代理)
+        // VIX: Yahoo（东方财富无VIX指数数据）
         try {
             const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
             const m = d?.chart?.result?.[0]?.meta;
@@ -792,17 +790,21 @@ const APIManager = (function() {
             }
         } catch (e) { console.warn('VIX失败:', e.message); }
         
-        // 纳指/标普: 腾讯财经直连（免代理，稳定）
-        try {
-            const qqq = await getTencentQuote('us-stock', 'QQQ');
-            result.nasdaqPe = { value: qqq.price, changePercent: qqq.changePercent, label: '', level: '' };
-        } catch (e) { console.warn('纳指失败:', e.message); }
-        try {
-            const spy = await getTencentQuote('us-stock', 'SPY');
-            result.sp500Pe = { value: spy.price, changePercent: spy.changePercent, label: '', level: '' };
-        } catch (e) { console.warn('标普失败:', e.message); }
+        // 美股ETF: 东方财富 push2（免代理直连）
+        // QQQ: 纳斯达克 105, SPY: 纽交所高增长板 107, 价格需/1000
+        const usGet = async (secid) => {
+            try {
+                const d = (await fetchAPI(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f170`))?.data;
+                if (d && d.f43) return { value: d.f43 / 1000, changePercent: d.f170 / 100, label: '', level: '' };
+            } catch (e) {}
+            return null;
+        };
+        const qqq = await usGet('105.QQQ');
+        if (qqq) result.nasdaqPe = qqq;
+        const spy = await usGet('107.SPY');
+        if (spy) result.sp500Pe = spy;
         
-        // A股指数PE: 东方财富 stock/get（直连可用）
+        // A股指数PE: 东方财富
         const emGet = async (secid) => {
             try {
                 const d = (await fetchAPI(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f115,f170`))?.data;
@@ -813,11 +815,8 @@ const APIManager = (function() {
         
         const csi = await emGet('1.000300');
         if (csi) result.csi300Pe = { ...csi, label: '倍', level: getPELevel(csi.value, 10, 13, 16) };
-        
         const div = await emGet('1.000825');
         if (div) result.dividend = { ...div, label: '倍', level: getPELevel(div.value, 6, 8, 10) };
-        
-        // 创业板 PE: 399006（已验证PE=14x）
         const gem = await emGet('0.399006');
         if (gem) result.star50 = { ...gem, label: '倍', level: getPELevel(gem.value, 25, 35, 50) };
         
