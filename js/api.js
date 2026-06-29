@@ -741,7 +741,7 @@ const APIManager = (function() {
     
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
     
-    // ==================== 市场估值指标（且慢+VIX） ====================
+    // ==================== 市场估值指标（蛋卷/雪球+VIX） ====================
     
     const INDICATOR_CACHE_KEY = 'investment_indicator_cache';
     const DJ_INDEX_MAP = {
@@ -803,7 +803,7 @@ const APIManager = (function() {
             } catch (e) { console.warn('VIX失败:', e.message); }
         }
         
-        // 五大指数PE: 且慢API
+        // 五大指数PE: 蛋卷/雪球API
         if (!cached || !result.csi300Pe) {
             try {
                 const dj = await fetchAPI('https://danjuanfunds.com/djapi/index_eva/dj');
@@ -817,7 +817,7 @@ const APIManager = (function() {
                         }
                     }
                 }
-            } catch (e) { console.warn('且慢PE失败:', e.message); }
+            } catch (e) { console.warn('蛋卷PE失败:', e.message); }
         }
         
         if (hasNew) saveCachedIndicators(result);
