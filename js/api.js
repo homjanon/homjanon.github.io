@@ -880,51 +880,109 @@ const APIManager = (function() {
         }));
     }
     
+    // ==================== 基金分红数据获取 ====================
+    
+    // 获取指定基金的分红记录（从东方财富基金品种数据）
+    // 返回: [{exDate, perUnit, navAfter, ...}]
+    async function fetchFundDividends(code) {
+        try {
+            const url = `https://fund.eastmoney.com/pingzhongdata/${code}.js?rt=${Date.now()}`;
+            const data = await injectScript(url, 'Data_netWorthTrend', 10000);
+            if (!data || !Array.isArray(data)) return [];
+            
+            const dividends = [];
+            for (const item of data) {
+                if (item.unitMoney && item.unitMoney.includes('分红')) {
+                    // 解析 "分红：每份派现金0.0110元"
+                    const match = item.unitMoney.match(/([\d.]+)元/);
+                    if (match && item.x) {
+                        const perUnit = parseFloat(match[1]);
+                        const exDate = new Date(item.x).toISOString().slice(0, 10);
+                        const navAfter = item.y;  // 除权后净值
+                        dividends.push({
+                            perUnit,
+                            exDate,
+                            navAfter: navAfter || null,
+                            currency: 'CNY'
+                        });
+                    }
+                }
+            }
+            return dividends;
+        } catch (e) {
+            console.warn(`基金 ${code} 分红获取失败:`, e.message);
+            return [];
+        }
+    }
+    
     // 检查当前持仓是否有未记录的分红事件
-    // 返回: [{assetId, code, name, perShare, exDate, recordDate, currency, reportPeriod, planProfile}]
+    // 返回: [{assetId, code, name, perShare, exDate, type, currency, reportPeriod}]
     async function checkNewDividends() {
         const assets = StorageManager.getAssets();
         if (!assets.length) return [];
         
-        // 收集所有需要监控的A股代码（去重）
+        const today = new Date().toISOString().slice(0, 10);
+        const newDividends = [];
+        
+        // --- A股分红检测 ---
         const aStockCodes = [...new Set(
             assets.filter(a => a.type === 'a-stock').map(a => a.code)
         )];
-        if (!aStockCodes.length) return [];
-        
-        const newDividends = [];
         for (const code of aStockCodes) {
             try {
                 const dividends = await fetchDividends(code);
-                // 只取"实施分配"状态、每股金额已知、且除权日已到的
-                const today = new Date().toISOString().slice(0, 10);
                 const implemented = dividends.filter(d => 
                     d.assignProgress === '实施分配' && d.perShare && d.exDate && d.exDate <= today
                 );
                 for (const d of implemented) {
-                    // 去重：检查是否已记录
                     if (!StorageManager.isDividendRecorded(code, d.exDate)) {
-                        // 找到对应的资产
-                        const matched = assets.filter(a => a.code === code);
-                        for (const asset of matched) {
+                        for (const asset of assets.filter(a => a.code === code)) {
                             newDividends.push({
-                                assetId: asset.id,
+                                assetId: asset.id, type: 'a-stock',
                                 code: d.securityCode,
                                 name: d.securityName || asset.name,
                                 perShare: d.perShare,
                                 exDate: d.exDate,
                                 recordDate: d.recordDate,
                                 currency: 'CNY',
-                                reportPeriod: d.reportPeriod,
-                                planProfile: d.planProfile
+                                reportPeriod: d.reportPeriod
                             });
                         }
                     }
                 }
             } catch (e) {
-                console.warn(`检查 ${code} 分红失败:`, e.message);
+                console.warn(`检查 A股 ${code} 分红失败:`, e.message);
             }
         }
+        
+        // --- 基金分红检测 ---
+        const fundCodes = [...new Set(
+            assets.filter(a => a.type === 'fund').map(a => a.code)
+        )];
+        for (const code of fundCodes) {
+            try {
+                const dividends = await fetchFundDividends(code);
+                const ready = dividends.filter(d => d.perUnit && d.exDate && d.exDate <= today);
+                for (const d of ready) {
+                    if (!StorageManager.isDividendRecorded(code, d.exDate)) {
+                        for (const asset of assets.filter(a => a.code === code && a.type === 'fund')) {
+                            newDividends.push({
+                                assetId: asset.id, type: 'fund',
+                                code, name: asset.name || code,
+                                perShare: d.perUnit,  // 基金用 perShare 字段存 perUnit
+                                exDate: d.exDate,
+                                currency: 'CNY',
+                                navAfter: d.navAfter,
+                                source: 'auto'
+                            });
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn(`检查 基金 ${code} 分红失败:`, e.message);
+            }
+        }
+        
         return newDividends;
     }
     
@@ -1051,6 +1109,6 @@ const APIManager = (function() {
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,
         cloudBackup, cloudFetch,
-        fetchIndicators, fetchDividends, checkNewDividends
+        fetchIndicators, fetchDividends, fetchFundDividends, checkNewDividends
     };
 })();

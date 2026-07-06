@@ -227,7 +227,12 @@ const App = (function() {
         if (prefill && prefill.assetId) {
             select.value = prefill.assetId;
             document.getElementById('div-per-share').value = prefill.perShare || '';
-            document.getElementById('div-tax-rate').value = 10;
+            // 基金分红免税
+            document.getElementById('div-tax-rate').value = prefill.type === 'fund' ? 0 : 10;
+            // 存储基金除权净值供复投使用
+            if (prefill.type === 'fund' && prefill.navAfter) {
+                document.getElementById('div-per-share').dataset.navAfter = prefill.navAfter;
+            }
         } else {
             select.selectedIndex = 0;
             document.getElementById('div-per-share').value = '';
@@ -246,12 +251,17 @@ const App = (function() {
         showDividendModal({ assetId });
     }
     
-    // 分红资产下拉切换时更新持股数和币种
+    // 分红资产下拉切换时更新持股数和币种、标签文字
     function onDividendAssetChange() {
         const select = document.getElementById('div-asset');
         const opt = select.options[select.selectedIndex];
+        const type = opt.dataset.type;
         document.getElementById('div-shares').value = opt.dataset.shares || '';
         document.getElementById('div-currency-hint').textContent = '币种：' + (opt.dataset.currency || 'CNY');
+        // 基金：每份 + 免税；股票：每股 + 10%
+        document.querySelector('label[for="div-per-share"]').textContent = type === 'fund' ? '每份分红（原币，税前）' : '每股分红（原币，税前）';
+        document.getElementById('div-tax-rate').value = type === 'fund' ? 0 : 10;
+        document.getElementById('div-shares').previousElementSibling.textContent = type === 'fund' ? '持仓份额' : '持股数量';
         calcDividendSummary();
     }
     
@@ -285,7 +295,7 @@ const App = (function() {
         
         const perShare = parseFloat(document.getElementById('div-per-share').value);
         const shares = parseFloat(document.getElementById('div-shares').value);
-        const taxRate = parseFloat(document.getElementById('div-tax-rate').value) || 10;
+        const taxRate = asset.type === 'fund' ? 0 : (parseFloat(document.getElementById('div-tax-rate').value) || 10);
         const currency = opt.dataset.currency || 'CNY';
         
         if (!perShare || perShare <= 0 || !shares || shares <= 0) {
@@ -297,14 +307,18 @@ const App = (function() {
         const taxAmount = totalAmount * (taxRate / 100);
         const netAmount = totalAmount - taxAmount;
         
+        // 从分红检测中获取附加数据
+        const perShareEl = document.getElementById('div-per-share');
+        const navAfter = perShareEl.dataset.navAfter ? parseFloat(perShareEl.dataset.navAfter) : null;
+        
         const record = {
             assetId, assetCode: asset.code, assetName: asset.name,
             perShare, shares, totalAmount, taxRate,
             taxAmount: Math.round(taxAmount * 100) / 100,
             netAmount: Math.round(netAmount * 100) / 100,
             currency, status: 'received',
-            exDate: '', reportPeriod: '', source: 'manual',
-            reinvest: null
+            exDate: '', reportPeriod: '', source: navAfter ? 'auto' : 'manual',
+            navAfter, reinvest: null
         };
         
         const saved = StorageManager.addDividendRecord(record);
@@ -324,18 +338,20 @@ const App = (function() {
         const asset = StorageManager.getAssetById(record.assetId);
         if (!asset) { UIManager.showToast('未找到对应资产', 'error'); return; }
         
-        // 简单prompt输入
-        const priceStr = prompt(`复投价格（${APIManager.getCurrencySymbol(record.currency)}，当前价 ${formatNumber(asset.currentPrice, 4)}）:`, asset.currentPrice);
+        // 基金有除权净值时自动填入
+        const defaultPrice = record.navAfter || asset.currentPrice;
+        const priceStr = prompt(`复投价格（${APIManager.getCurrencySymbol(record.currency)}${record.navAfter ? '，除权净值' : '，当前价'} ${formatNumber(defaultPrice, 4)}）:`, defaultPrice);
         if (!priceStr) return;
         const reinvestPrice = parseFloat(priceStr);
         if (isNaN(reinvestPrice) || reinvestPrice <= 0) { UIManager.showToast('价格无效', 'error'); return; }
         
+        const unit = asset.type === 'fund' ? '份' : '股';
         const maxShares = Math.floor(record.netAmount / reinvestPrice);
-        const sharesStr = prompt(`复投股数（最多 ${maxShares} 股）:`, maxShares);
+        const sharesStr = prompt(`复投${unit}数（最多 ${maxShares} ${unit}）:`, maxShares);
         if (!sharesStr) return;
         const reinvestShares = parseInt(sharesStr);
         if (isNaN(reinvestShares) || reinvestShares <= 0 || reinvestShares > maxShares) {
-            UIManager.showToast(`股数无效（1~${maxShares}）`, 'error');
+            UIManager.showToast(`${unit}数无效（1~${maxShares}）`, 'error');
             return;
         }
         
@@ -361,7 +377,7 @@ const App = (function() {
             reinvest: { shares: reinvestShares, price: reinvestPrice, date: new Date().toISOString().slice(0, 10) }
         });
         
-        UIManager.showToast(`复投成功：${reinvestShares}股 @${UIManager.formatCurrency(reinvestPrice, record.currency)}`, 'success');
+        UIManager.showToast(`复投成功：${reinvestShares}${unit} @${UIManager.formatCurrency(reinvestPrice, record.currency)}`, 'success');
         render();
     }
     

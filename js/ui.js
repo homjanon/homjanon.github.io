@@ -597,8 +597,9 @@ const UIManager = (function() {
             return;
         }
         const names = [...new Set(newDividends.map(d => d.name))].join('、');
+        const unit = newDividends[0].type === 'fund' ? '份' : '股';
         document.getElementById('dividend-alert-text').textContent = 
-            `检测到 ${names} 有未记录的分红（每股 ${newDividends[0].perShare.toFixed(2)} 元）`;
+            `检测到 ${names} 有未记录的分红（每${unit} ${newDividends[0].perShare.toFixed(4)} 元）`;
         alert.style.display = 'block';
     }
     
@@ -631,8 +632,10 @@ const UIManager = (function() {
         container.innerHTML = records.map(r => {
             const cny = APIManager.toCNY(r.netAmount || r.totalAmount, r.currency || 'CNY');
             const symbol = APIManager.getCurrencySymbol(r.currency);
+            const isFund = r.navAfter != null;
+            const unit = isFund ? '份' : '股';
             const reinvestInfo = r.reinvest 
-                ? `<span class="badge-reinvested">已复投 ${r.reinvest.shares}股 @${symbol}${formatNumber(r.reinvest.price, 2)}</span>`
+                ? `<span class="badge-reinvested">已复投 ${r.reinvest.shares}${unit} @${symbol}${formatNumber(r.reinvest.price, 2)}</span>`
                 : `<span class="badge-pending">待复投</span>`;
             return `
             <div class="dividend-record-card">
@@ -641,7 +644,7 @@ const UIManager = (function() {
                     <span class="dividend-record-date">${r.exDate || r.createDate}</span>
                 </div>
                 <div class="dividend-record-body">
-                    <span>每股 ${symbol}${formatNumber(r.perShare, 4)} × ${r.shares}股</span>
+                    <span>每${unit} ${symbol}${formatNumber(r.perShare, 4)} × ${r.shares}${unit}</span>
                     <span>税后到账 ${formatCurrency(r.netAmount, r.currency)} (≈${formatCurrency(cny, 'CNY')})</span>
                     ${reinvestInfo}
                     ${r.reportPeriod ? `<small>报告期: ${r.reportPeriod.slice(0,7)}</small>` : ''}
