@@ -922,3 +922,150 @@ input[type="checkbox"] {
     vertical-align: middle;
     margin-right: 8px;
 }
+
+/* ==================== 分红相关样式 ==================== */
+
+/* 可用现金卡片 */
+.cash-card {
+    cursor: pointer;
+    border: 2px dashed var(--success-color);
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    transition: all 0.2s;
+}
+.cash-card:hover {
+    border-color: #059669;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+/* 分红通知横幅 */
+.dividend-alert {
+    max-width: 1200px;
+    margin: 0 auto 16px;
+    padding: 0 16px;
+}
+.dividend-alert-content {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1px solid #f59e0b;
+    border-radius: 10px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideDown 0.3s ease-out;
+}
+@keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.dividend-alert-icon {
+    font-size: 20px;
+}
+.dividend-alert-content span:nth-child(2) {
+    flex: 1;
+    font-weight: 500;
+    color: #92400e;
+}
+
+/* 分红记录列表 */
+.dividend-summary-bar {
+    display: flex;
+    gap: 20px;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+.dividend-record-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: box-shadow 0.2s;
+}
+.dividend-record-card:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.dividend-record-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.dividend-record-header strong {
+    color: var(--primary-color);
+    font-size: 15px;
+}
+.dividend-record-date {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.dividend-record-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+.dividend-record-body span {
+    padding: 2px 10px;
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+.dividend-record-body small {
+    flex-basis: 100%;
+    color: var(--text-muted);
+}
+.dividend-record-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+.badge-reinvested {
+    padding: 2px 10px;
+    background: #d1fae5;
+    color: #065f46;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.badge-pending {
+    padding: 2px 10px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* 分红计算摘要 */
+.dividend-summary {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 8px;
+}
+.dividend-summary div {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 14px;
+}
+.dividend-summary strong {
+    color: var(--primary-color);
+}
+
+/* 资产卡片底部操作栏 */
+.asset-footer-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* 现金编辑预览 */
+#edit-cash-cny {
+    color: var(--primary-color);
+}
+

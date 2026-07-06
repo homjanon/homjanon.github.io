@@ -849,6 +849,84 @@ const APIManager = (function() {
         return exchangeRates;
     }
     
+    // ==================== 分红数据获取（东方财富） ====================
+    
+    // 获取指定A股的分红记录
+    // 返回数组: [{perShare, exDate, recordDate, reportPeriod, assignProgress, planProfile, ...}]
+    async function fetchDividends(securityCode) {
+        const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get'
+            + '?sortColumns=PLAN_NOTICE_DATE&sortTypes=-1&pageSize=5&pageNumber=1'
+            + '&reportName=RPT_SHAREBONUS_DET&columns=ALL&source=WEB&client=WEB'
+            + '&filter=(SECURITY_CODE=%22' + securityCode + '%22)';
+        
+        const data = await fetchAPI(url);
+        if (!data || !data.success || !data.result || !data.result.data) {
+            console.warn('分红数据获取失败:', data);
+            return [];
+        }
+        return data.result.data.map(item => ({
+            securityCode: item.SECURITY_CODE,
+            securityName: item.SECURITY_NAME_ABBR,
+            perShare: item.PRETAX_BONUS_RMB ? item.PRETAX_BONUS_RMB / 10 : null,  // 每10股 → 每股
+            exDate: item.EX_DIVIDEND_DATE ? item.EX_DIVIDEND_DATE.slice(0, 10) : null,
+            recordDate: item.EQUITY_RECORD_DATE ? item.EQUITY_RECORD_DATE.slice(0, 10) : null,
+            reportPeriod: item.REPORT_DATE ? item.REPORT_DATE.slice(0, 10) : null,
+            assignProgress: item.ASSIGN_PROGRESS,  // 预披露 / 实施分配
+            planProfile: item.IMPL_PLAN_PROFILE,
+            dividendRatio: item.DIVIDENT_RATIO,
+            basicEps: item.BASIC_EPS,
+            noticeDate: item.NOTICE_DATE ? item.NOTICE_DATE.slice(0, 10) : null,
+            currency: 'CNY'
+        }));
+    }
+    
+    // 检查当前持仓是否有未记录的分红事件
+    // 返回: [{assetId, code, name, perShare, exDate, recordDate, currency, reportPeriod, planProfile}]
+    async function checkNewDividends() {
+        const assets = StorageManager.getAssets();
+        if (!assets.length) return [];
+        
+        // 收集所有需要监控的A股代码（去重）
+        const aStockCodes = [...new Set(
+            assets.filter(a => a.type === 'a-stock').map(a => a.code)
+        )];
+        if (!aStockCodes.length) return [];
+        
+        const newDividends = [];
+        for (const code of aStockCodes) {
+            try {
+                const dividends = await fetchDividends(code);
+                // 只取"实施分配"状态且每股金额已知的
+                const implemented = dividends.filter(d => 
+                    d.assignProgress === '实施分配' && d.perShare && d.exDate
+                );
+                for (const d of implemented) {
+                    // 去重：检查是否已记录
+                    if (!StorageManager.isDividendRecorded(code, d.exDate)) {
+                        // 找到对应的资产
+                        const matched = assets.filter(a => a.code === code);
+                        for (const asset of matched) {
+                            newDividends.push({
+                                assetId: asset.id,
+                                code: d.securityCode,
+                                name: d.securityName || asset.name,
+                                perShare: d.perShare,
+                                exDate: d.exDate,
+                                recordDate: d.recordDate,
+                                currency: 'CNY',
+                                reportPeriod: d.reportPeriod,
+                                planProfile: d.planProfile
+                            });
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn(`检查 ${code} 分红失败:`, e.message);
+            }
+        }
+        return newDividends;
+    }
+    
     function getExchangeRates() { return exchangeRates; }
     
     // 金额转换为人民币
@@ -972,6 +1050,6 @@ const APIManager = (function() {
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,
         cloudBackup, cloudFetch,
-        fetchIndicators
+        fetchIndicators, fetchDividends, checkNewDividends
     };
 })();

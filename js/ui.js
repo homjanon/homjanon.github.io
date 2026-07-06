@@ -95,7 +95,7 @@ const UIManager = (function() {
         });
     }
     
-    // 渲染总览数据（全部换算为人民币）
+    // 渲染总览数据（全部换算为人民币，含现金）
     function renderOverview(assets) {
         let totalAssets = 0, totalCost = 0, totalProfit = 0, todayPnL = 0;
         
@@ -111,6 +111,14 @@ const UIManager = (function() {
             todayPnL += APIManager.toCNY(daily.amount, currency);
         });
         
+        // 计入现金余额
+        const cash = StorageManager.getCashBalance();
+        const cashCNY = APIManager.toCNY(cash.CNY, 'CNY') + APIManager.toCNY(cash.HKD, 'HKD') + APIManager.toCNY(cash.USD, 'USD');
+        totalAssets += cashCNY;
+        // 总盈亏不含现金（现金算成本=现金额）
+        totalProfit += cashCNY;
+        totalCost += cashCNY;
+        
         const totalReturn = totalCost > 0 ? (totalProfit / totalCost * 100) : 0;
         const prevAssets = totalAssets - todayPnL;
         const todayReturn = prevAssets > 0 ? (todayPnL / prevAssets * 100) : 0;
@@ -125,6 +133,9 @@ const UIManager = (function() {
         document.getElementById('total-profit').className = `card-value ${totalProfit >= 0 ? 'positive' : 'negative'}`;
         document.getElementById('total-return').textContent = formatPercent(totalReturn);
         document.getElementById('total-return').className = `card-value ${totalReturn >= 0 ? 'positive' : 'negative'}`;
+        
+        // 渲染可用现金卡片
+        document.getElementById('cash-balance').textContent = formatCurrency(cashCNY, 'CNY');
     }
     
     // 渲染资产列表
@@ -236,9 +247,14 @@ const UIManager = (function() {
                     </div>
                     <div class="asset-footer">
                         <span>更新: ${formatDate(asset.lastUpdateTime)}</span>
-                        <button class="btn btn-sm btn-info" onclick="App.refreshAsset('${asset.id}')">
-                            <i class="fas fa-sync-alt"></i> 刷新
-                        </button>
+                        <div class="asset-footer-actions">
+                            <button class="btn btn-sm btn-success" onclick="App.recordDividend('${asset.id}')" title="记录分红">
+                                <i class="fas fa-gift"></i> 分红
+                            </button>
+                            <button class="btn btn-sm btn-info" onclick="App.refreshAsset('${asset.id}')">
+                                <i class="fas fa-sync-alt"></i> 刷新
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -437,13 +453,21 @@ const UIManager = (function() {
             categoryDataCNY[cat] = (categoryDataCNY[cat] || 0) + valueCNY;
         });
         
-        const marketColors = ['#dc2626', '#f59e0b', '#2563eb', '#8b5cf6'];
-        const catColors = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#ec4899', '#14b8a6', '#f97316'];
+        // 计入现金
+        const cash = StorageManager.getCashBalance();
+        const cashCNY = APIManager.toCNY(cash.CNY, 'CNY') + APIManager.toCNY(cash.HKD, 'HKD') + APIManager.toCNY(cash.USD, 'USD');
+        if (cashCNY > 0) {
+            marketDataCNY['现金'] = cashCNY;
+            categoryDataCNY['现金'] = (categoryDataCNY['现金'] || 0) + cashCNY;
+        }
+        
+        const marketColors = ['#dc2626', '#f59e0b', '#2563eb', '#8b5cf6', '#10b981'];
+        const catColors = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#ec4899', '#14b8a6', '#f97316', '#84cc16'];
         
         // 图1：市场分布（人民币市值）
         renderPieChart('chart-asset-type', {
-            labels: ['A股', '港股', '美股', '基金'],
-            values: [marketDataCNY['A股'], marketDataCNY['港股'], marketDataCNY['美股'], marketDataCNY['基金']],
+            labels: ['A股', '港股', '美股', '基金', '现金'],
+            values: [marketDataCNY['A股'], marketDataCNY['港股'], marketDataCNY['美股'], marketDataCNY['基金'], marketDataCNY['现金']],
             colors: marketColors
         }, 'assetTypeChart');
         
@@ -556,8 +580,97 @@ const UIManager = (function() {
         showLoading,
         hideLoading,
         showToast,
-        updateLastUpdateTime
+        updateLastUpdateTime,
+        renderDividendAlert,
+        renderDividendList,
+        showCashEditModal
     };
+    
+    // ==================== 分红相关渲染 ====================
+    
+    // 渲染分红检测通知横幅
+    function renderDividendAlert(newDividends) {
+        const alert = document.getElementById('dividend-alert');
+        if (!alert) return;
+        if (!newDividends || !newDividends.length) {
+            alert.style.display = 'none';
+            return;
+        }
+        const names = [...new Set(newDividends.map(d => d.name))].join('、');
+        document.getElementById('dividend-alert-text').textContent = 
+            `检测到 ${names} 有未记录的分红（每股 ${newDividends[0].perShare.toFixed(2)} 元）`;
+        alert.style.display = 'block';
+    }
+    
+    // 渲染分红记录列表
+    function renderDividendList() {
+        const records = StorageManager.getDividendRecords();
+        const container = document.getElementById('dividend-records-list');
+        if (!container) return;
+        
+        // 汇总
+        let totalCNY = 0, reinvestedCNY = 0, pendingCNY = 0;
+        records.forEach(r => {
+            const cny = APIManager.toCNY(r.netAmount || r.totalAmount, r.currency || 'CNY');
+            totalCNY += cny;
+            if (r.reinvest) {
+                reinvestedCNY += cny;
+            } else {
+                pendingCNY += cny;
+            }
+        });
+        document.getElementById('sum-total').textContent = formatCurrency(totalCNY, 'CNY');
+        document.getElementById('sum-reinvested').textContent = formatCurrency(reinvestedCNY, 'CNY');
+        document.getElementById('sum-pending').textContent = formatCurrency(pendingCNY, 'CNY');
+        
+        if (!records.length) {
+            container.innerHTML = '<div class="empty-state"><p>暂无分红记录</p></div>';
+            return;
+        }
+        
+        container.innerHTML = records.map(r => {
+            const cny = APIManager.toCNY(r.netAmount || r.totalAmount, r.currency || 'CNY');
+            const symbol = APIManager.getCurrencySymbol(r.currency);
+            const reinvestInfo = r.reinvest 
+                ? `<span class="badge-reinvested">已复投 ${r.reinvest.shares}股 @${symbol}${formatNumber(r.reinvest.price, 2)}</span>`
+                : `<span class="badge-pending">待复投</span>`;
+            return `
+            <div class="dividend-record-card">
+                <div class="dividend-record-header">
+                    <strong>${r.assetName} (${r.assetCode})</strong>
+                    <span class="dividend-record-date">${r.exDate || r.createDate}</span>
+                </div>
+                <div class="dividend-record-body">
+                    <span>每股 ${symbol}${formatNumber(r.perShare, 4)} × ${r.shares}股</span>
+                    <span>税后到账 ${formatCurrency(r.netAmount, r.currency)} (≈${formatCurrency(cny, 'CNY')})</span>
+                    ${reinvestInfo}
+                    ${r.reportPeriod ? `<small>报告期: ${r.reportPeriod.slice(0,7)}</small>` : ''}
+                </div>
+                <div class="dividend-record-actions">
+                    ${!r.reinvest ? `<button class="btn btn-sm btn-success" onclick="App.reinvestDividend('${r.id}')">💰 复投</button>` : ''}
+                    <button class="btn btn-sm btn-danger" onclick="App.deleteDividend('${r.id}')">🗑️</button>
+                </div>
+            </div>`;
+        }).reverse().join('');
+    }
+    
+    // 显示现金编辑模态框
+    function showCashEditModal() {
+        const cash = StorageManager.getCashBalance();
+        document.getElementById('edit-cny').value = cash.CNY || 0;
+        document.getElementById('edit-hkd').value = cash.HKD || 0;
+        document.getElementById('edit-usd').value = cash.USD || 0;
+        updateCashEditPreview();
+        document.getElementById('modal-cash-edit').classList.add('active');
+    }
+    
+    function updateCashEditPreview() {
+        const cny = parseFloat(document.getElementById('edit-cny').value) || 0;
+        const hkd = parseFloat(document.getElementById('edit-hkd').value) || 0;
+        const usd = parseFloat(document.getElementById('edit-usd').value) || 0;
+        const total = cny + APIManager.toCNY(hkd, 'HKD') + APIManager.toCNY(usd, 'USD');
+        document.getElementById('edit-cash-cny').textContent = formatCurrency(total, 'CNY');
+    }
 })();
 
 // 添加Toast动画样式

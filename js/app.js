@@ -24,6 +24,9 @@ const App = (function() {
         try { await UIManager.renderIndicators(); } catch(e) { console.warn('指标加载失败:', e.message); }
         
         console.log('初始化完成');
+        
+        // 异步检测新股息（不阻塞页面）
+        checkAutoDividends();
     }
     
     // 绑定事件
@@ -122,6 +125,275 @@ const App = (function() {
                 typeSelect.value = 'hk-stock';
             }
         });
+        
+        // ===== 分红相关事件 =====
+        
+        // 分红列表按钮
+        document.getElementById('btn-dividend-list').addEventListener('click', () => {
+            UIManager.renderDividendList();
+            showModal('modal-dividend-list');
+        });
+        
+        // 分红通知横幅按钮
+        document.getElementById('dividend-alert-btn').addEventListener('click', () => {
+            document.getElementById('dividend-alert').style.display = 'none';
+            // 自动给第一个检测到的分红弹出表单
+            if (window._pendingDividends && window._pendingDividends.length) {
+                showDividendModal(window._pendingDividends[0]);
+            }
+        });
+        
+        // 分红模态框关闭
+        document.getElementById('div-modal-close').addEventListener('click', () => hideModal('modal-dividend'));
+        document.getElementById('div-btn-cancel').addEventListener('click', () => hideModal('modal-dividend'));
+        document.getElementById('divlist-modal-close').addEventListener('click', () => hideModal('modal-dividend-list'));
+        
+        // 分红表单提交
+        document.getElementById('form-dividend').addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitDividend();
+        });
+        
+        // 分红表单实时计算
+        document.getElementById('div-per-share').addEventListener('input', calcDividendSummary);
+        document.getElementById('div-tax-rate').addEventListener('input', calcDividendSummary);
+        document.getElementById('div-asset').addEventListener('change', onDividendAssetChange);
+        
+        // 点击外部关闭分红模态框
+        document.getElementById('modal-dividend').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-dividend') hideModal('modal-dividend');
+        });
+        document.getElementById('modal-dividend-list').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-dividend-list') hideModal('modal-dividend-list');
+        });
+        
+        // 现金卡片点击编辑
+        document.getElementById('cash-card').addEventListener('click', () => {
+            UIManager.showCashEditModal();
+        });
+        document.getElementById('cash-modal-close').addEventListener('click', () => hideModal('modal-cash-edit'));
+        document.getElementById('cash-btn-cancel').addEventListener('click', () => hideModal('modal-cash-edit'));
+        document.getElementById('modal-cash-edit').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-cash-edit') hideModal('modal-cash-edit');
+        });
+        
+        // 现金编辑表单提交
+        document.getElementById('form-cash-edit').addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveCashEdit();
+        });
+        
+        // 现金编辑实时预览
+        ['edit-cny', 'edit-hkd', 'edit-usd'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                const cny = parseFloat(document.getElementById('edit-cny').value) || 0;
+                const hkd = parseFloat(document.getElementById('edit-hkd').value) || 0;
+                const usd = parseFloat(document.getElementById('edit-usd').value) || 0;
+                const total = cny + APIManager.toCNY(hkd, 'HKD') + APIManager.toCNY(usd, 'USD');
+                document.getElementById('edit-cash-cny').textContent = UIManager.formatCurrency(total, 'CNY');
+            });
+        });
+    }
+    
+    // ==================== 分红业务逻辑 ====================
+    
+    // 保存待处理的分红检测结果
+    window._pendingDividends = [];
+    
+    // 自动检测新股息
+    async function checkAutoDividends() {
+        console.log('检查分红...');
+        try {
+            const newDivs = await APIManager.checkNewDividends();
+            if (newDivs.length) {
+                window._pendingDividends = newDivs;
+                UIManager.renderDividendAlert(newDivs);
+                console.log('发现未记录分红:', newDivs.map(d => d.name + ' ' + d.perShare));
+            }
+        } catch (e) {
+            console.warn('分红检测异常:', e.message);
+        }
+    }
+    
+    // 显示记录分红模态框（自动填入或手动）
+    function showDividendModal(prefill = null) {
+        // 填充资产下拉列表
+        const select = document.getElementById('div-asset');
+        const assets = StorageManager.getAssets();
+        select.innerHTML = assets.map(a => 
+            `<option value="${a.id}" data-type="${a.type}" data-currency="${APIManager.getAssetCurrency(a.type)}" data-shares="${a.shares}" data-name="${a.name || a.code}">${a.name || a.code} (${a.code})</option>`
+        ).join('');
+        
+        if (prefill && prefill.assetId) {
+            select.value = prefill.assetId;
+            document.getElementById('div-per-share').value = prefill.perShare || '';
+            document.getElementById('div-tax-rate').value = 10;
+        } else {
+            select.selectedIndex = 0;
+            document.getElementById('div-per-share').value = '';
+            document.getElementById('div-tax-rate').value = 10;
+        }
+        
+        onDividendAssetChange();
+        calcDividendSummary();
+        showModal('modal-dividend');
+    }
+    
+    // 记录分红：从资产卡片调用
+    function recordDividend(assetId) {
+        const asset = StorageManager.getAssetById(assetId);
+        if (!asset) { UIManager.showToast('未找到资产', 'error'); return; }
+        showDividendModal({ assetId });
+    }
+    
+    // 分红资产下拉切换时更新持股数和币种
+    function onDividendAssetChange() {
+        const select = document.getElementById('div-asset');
+        const opt = select.options[select.selectedIndex];
+        document.getElementById('div-shares').value = opt.dataset.shares || '';
+        document.getElementById('div-currency-hint').textContent = '币种：' + (opt.dataset.currency || 'CNY');
+        calcDividendSummary();
+    }
+    
+    // 实时计算分红摘要
+    function calcDividendSummary() {
+        const perShare = parseFloat(document.getElementById('div-per-share').value) || 0;
+        const shares = parseFloat(document.getElementById('div-shares').value) || 0;
+        const taxRate = (parseFloat(document.getElementById('div-tax-rate').value) || 0) / 100;
+        
+        const total = perShare * shares;
+        const tax = total * taxRate;
+        const net = total - tax;
+        
+        if (perShare > 0 && shares > 0) {
+            document.getElementById('div-summary').style.display = 'block';
+            document.getElementById('div-pre-tax').textContent = UIManager.formatCurrency(total, 'CNY');
+            document.getElementById('div-tax').textContent = '-' + UIManager.formatCurrency(tax, 'CNY');
+            document.getElementById('div-net').textContent = UIManager.formatCurrency(net, 'CNY');
+        } else {
+            document.getElementById('div-summary').style.display = 'none';
+        }
+    }
+    
+    // 提交分红记录
+    function submitDividend() {
+        const select = document.getElementById('div-asset');
+        const opt = select.options[select.selectedIndex];
+        const assetId = select.value;
+        const asset = StorageManager.getAssetById(assetId);
+        if (!asset) { UIManager.showToast('未找到资产', 'error'); return; }
+        
+        const perShare = parseFloat(document.getElementById('div-per-share').value);
+        const shares = parseFloat(document.getElementById('div-shares').value);
+        const taxRate = parseFloat(document.getElementById('div-tax-rate').value) || 10;
+        const currency = opt.dataset.currency || 'CNY';
+        
+        if (!perShare || perShare <= 0 || !shares || shares <= 0) {
+            UIManager.showToast('请填写完整的分红信息', 'error');
+            return;
+        }
+        
+        const totalAmount = perShare * shares;
+        const taxAmount = totalAmount * (taxRate / 100);
+        const netAmount = totalAmount - taxAmount;
+        
+        const record = {
+            assetId, assetCode: asset.code, assetName: asset.name,
+            perShare, shares, totalAmount, taxRate,
+            taxAmount: Math.round(taxAmount * 100) / 100,
+            netAmount: Math.round(netAmount * 100) / 100,
+            currency, status: 'received',
+            exDate: '', reportPeriod: '', source: 'manual',
+            reinvest: null
+        };
+        
+        const saved = StorageManager.addDividendRecord(record);
+        StorageManager.addCash(netAmount, currency);
+        UIManager.showToast(`分红到账 ${UIManager.formatCurrency(netAmount, currency)}`, 'success');
+        
+        hideModal('modal-dividend');
+        render();
+    }
+    
+    // 复投分红
+    function reinvestDividend(dividendId) {
+        const record = StorageManager.getDividendRecords().find(r => r.id === dividendId);
+        if (!record) { UIManager.showToast('未找到分红记录', 'error'); return; }
+        if (record.reinvest) { UIManager.showToast('该分红已复投', 'info'); return; }
+        
+        const asset = StorageManager.getAssetById(record.assetId);
+        if (!asset) { UIManager.showToast('未找到对应资产', 'error'); return; }
+        
+        // 简单prompt输入
+        const priceStr = prompt(`复投价格（${APIManager.getCurrencySymbol(record.currency)}，当前价 ${formatNumber(asset.currentPrice, 4)}）:`, asset.currentPrice);
+        if (!priceStr) return;
+        const reinvestPrice = parseFloat(priceStr);
+        if (isNaN(reinvestPrice) || reinvestPrice <= 0) { UIManager.showToast('价格无效', 'error'); return; }
+        
+        const maxShares = Math.floor(record.netAmount / reinvestPrice);
+        const sharesStr = prompt(`复投股数（最多 ${maxShares} 股）:`, maxShares);
+        if (!sharesStr) return;
+        const reinvestShares = parseInt(sharesStr);
+        if (isNaN(reinvestShares) || reinvestShares <= 0 || reinvestShares > maxShares) {
+            UIManager.showToast(`股数无效（1~${maxShares}）`, 'error');
+            return;
+        }
+        
+        const totalCost = reinvestPrice * reinvestShares;
+        if (!StorageManager.deductCash(totalCost, record.currency)) {
+            UIManager.showToast('现金余额不足', 'error');
+            return;
+        }
+        
+        // 加权平均计算新成本
+        const oldShares = asset.shares;
+        const oldTotalCost = asset.cost * oldShares;
+        const newShares = oldShares + reinvestShares;
+        const newCost = (oldTotalCost + totalCost) / newShares;
+        
+        StorageManager.updateAsset(record.assetId, {
+            shares: newShares,
+            cost: newCost
+        });
+        
+        StorageManager.updateDividendRecord(dividendId, {
+            status: 'reinvested',
+            reinvest: { shares: reinvestShares, price: reinvestPrice, date: new Date().toISOString().slice(0, 10) }
+        });
+        
+        UIManager.showToast(`复投成功：${reinvestShares}股 @${UIManager.formatCurrency(reinvestPrice, record.currency)}`, 'success');
+        render();
+    }
+    
+    // 删除分红记录
+    function deleteDividend(dividendId) {
+        const record = StorageManager.getDividendRecords().find(r => r.id === dividendId);
+        if (!record) return;
+        if (record.reinvest) {
+            UIManager.showToast('已复投的分红不可删除', 'error');
+            return;
+        }
+        if (!confirm(`确定删除 ${record.assetName} 的分红记录吗？（现金不会退回）`)) return;
+        StorageManager.deleteDividendRecord(dividendId);
+        UIManager.showToast('已删除', 'success');
+        UIManager.renderDividendList();
+        render();
+    }
+    
+    // 保存现金编辑
+    function saveCashEdit() {
+        const cny = parseFloat(document.getElementById('edit-cny').value) || 0;
+        const hkd = parseFloat(document.getElementById('edit-hkd').value) || 0;
+        const usd = parseFloat(document.getElementById('edit-usd').value) || 0;
+        StorageManager.setCashBalance({ CNY: cny, HKD: hkd, USD: usd });
+        hideModal('modal-cash-edit');
+        UIManager.showToast('现金余额已更新', 'success');
+        render();
+    }
+    
+    function formatNumber(n, dec = 4) {
+        if (n === null || n === undefined) return '--';
+        return parseFloat(n).toFixed(dec);
     }
     
     // 渲染界面
@@ -143,6 +415,8 @@ const App = (function() {
             const v = (a.currentPrice || 0) * a.shares;
             total += APIManager.toCNY(v, c);
         });
+        const cash = StorageManager.getCashBalance();
+        total += APIManager.toCNY(cash.CNY || 0, 'CNY') + APIManager.toCNY(cash.HKD || 0, 'HKD') + APIManager.toCNY(cash.USD || 0, 'USD');
         StorageManager.addHistorySnapshot(total);
     }
     
@@ -562,6 +836,9 @@ const App = (function() {
         editAsset,
         deleteAsset,
         refreshAsset,
+        recordDividend,
+        reinvestDividend,
+        deleteDividend,
         exportData,
         importData
     };
@@ -579,6 +856,9 @@ const App = (function() {
         editAsset,
         deleteAsset,
         refreshAsset,
+        recordDividend,
+        reinvestDividend,
+        deleteDividend,
         exportData,
         importData
     };

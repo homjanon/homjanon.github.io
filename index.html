@@ -31,6 +31,9 @@
                     <button id="btn-refresh-all" class="btn btn-primary" title="刷新所有数据">
                         <i class="fas fa-sync-alt"></i> 刷新数据
                     </button>
+                    <button id="btn-dividend-list" class="btn btn-secondary" title="分红记录">
+                        <i class="fas fa-gift"></i> 分红
+                    </button>
                 </div>
             </div>
         </header>
@@ -62,6 +65,19 @@
                     <div class="card-label">当日收益率</div>
                     <div class="card-value" id="today-return">0.00%</div>
                 </div>
+                <div class="card overview-card cash-card" id="cash-card" title="点击编辑各币种现金余额">
+                    <div class="card-label">可用现金 <i class="fas fa-pen" style="font-size:10px;opacity:0.5"></i></div>
+                    <div class="card-value" id="cash-balance">¥0.00</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 分红检测通知 -->
+        <section class="dividend-alert" id="dividend-alert" style="display:none">
+            <div class="dividend-alert-content">
+                <span class="dividend-alert-icon">📢</span>
+                <span id="dividend-alert-text">检测到新分红</span>
+                <button class="btn btn-sm btn-primary" id="dividend-alert-btn">查看</button>
             </div>
         </section>
 
@@ -330,6 +346,98 @@
         <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
             <p>正在加载数据...</p>
+        </div>
+    </div>
+
+    <!-- 记录分红模态框 -->
+    <div id="modal-dividend" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💰 记录分红</h2>
+                <button class="modal-close" id="div-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-dividend">
+                    <div class="form-group">
+                        <label for="div-asset">分红资产</label>
+                        <select id="div-asset" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="div-per-share">每股分红（原币，税前）</label>
+                        <input type="number" id="div-per-share" step="0.0001" placeholder="如：1.003" required>
+                        <small class="form-hint" id="div-currency-hint">币种：CNY</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="div-shares">持股数量</label>
+                        <input type="number" id="div-shares" step="1" placeholder="自动填入当前持仓" required readonly>
+                        <small class="form-hint">基于当前持仓数量，可手动修改</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="div-tax-rate">税率（%）</label>
+                        <input type="number" id="div-tax-rate" step="0.1" value="10" min="0" max="100">
+                    </div>
+                    <div class="dividend-summary" id="div-summary" style="display:none">
+                        <div><span>税前总额：</span><strong id="div-pre-tax">--</strong></div>
+                        <div><span>税额：</span><strong id="div-tax">--</strong></div>
+                        <div><span>税后到账：</span><strong id="div-net">--</strong></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="div-btn-cancel">取消</button>
+                        <button type="submit" class="btn btn-primary">确认到账</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分红记录列表模态框 -->
+    <div id="modal-dividend-list" class="modal">
+        <div class="modal-content" style="max-width:720px">
+            <div class="modal-header">
+                <h2>📋 分红记录</h2>
+                <button class="modal-close" id="divlist-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="dividend-summary-bar" id="dividend-summary-bar">
+                    <span>累计分红：<strong id="sum-total">¥0</strong></span>
+                    <span>已复投：<strong id="sum-reinvested">¥0</strong></span>
+                    <span>待复投：<strong id="sum-pending">¥0</strong></span>
+                </div>
+                <div id="dividend-records-list">
+                    <div class="empty-state"><p>暂无分红记录</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 现金编辑模态框 -->
+    <div id="modal-cash-edit" class="modal">
+        <div class="modal-content" style="max-width:400px">
+            <div class="modal-header">
+                <h2>💵 编辑现金余额</h2>
+                <button class="modal-close" id="cash-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-cash-edit">
+                    <div class="form-group">
+                        <label>人民币 (CNY)</label>
+                        <input type="number" id="edit-cny" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>港币 (HKD)</label>
+                        <input type="number" id="edit-hkd" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>美元 (USD)</label>
+                        <input type="number" id="edit-usd" step="0.01" min="0">
+                    </div>
+                    <small class="form-hint">折合人民币约 <strong id="edit-cash-cny">¥0.00</strong></small>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cash-btn-cancel">取消</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

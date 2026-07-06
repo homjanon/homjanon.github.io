@@ -6,6 +6,8 @@
 const StorageManager = (function() {
     const STORAGE_KEY = 'investment_tracker_data';
     const CONFIG_KEY = 'investment_tracker_config';
+    const CASH_KEY = 'investment_cash_balance';
+    const DIVIDEND_KEY = 'investment_dividends';
     
     // 获取所有资产数据
     function getAssets() {
@@ -118,14 +120,101 @@ const StorageManager = (function() {
     // 清除所有数据
     function clearAllData() {
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(CASH_KEY);
+        localStorage.removeItem(DIVIDEND_KEY);
         return true;
+    }
+    
+    // ==================== 现金余额管理 ====================
+    
+    function getCashBalance() {
+        try {
+            const data = localStorage.getItem(CASH_KEY);
+            return data ? JSON.parse(data) : { CNY: 0, HKD: 0, USD: 0 };
+        } catch (e) { return { CNY: 0, HKD: 0, USD: 0 }; }
+    }
+    
+    function setCashBalance(balance) {
+        try {
+            localStorage.setItem(CASH_KEY, JSON.stringify(balance));
+            return true;
+        } catch (e) { return false; }
+    }
+    
+    function addCash(amount, currency) {
+        const bal = getCashBalance();
+        bal[currency] = (bal[currency] || 0) + amount;
+        return setCashBalance(bal);
+    }
+    
+    function deductCash(amount, currency) {
+        const bal = getCashBalance();
+        if ((bal[currency] || 0) < amount) return false;
+        bal[currency] -= amount;
+        return setCashBalance(bal);
+    }
+    
+    // ==================== 分红记录管理 ====================
+    
+    function getDividendRecords() {
+        try {
+            const data = localStorage.getItem(DIVIDEND_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch (e) { return []; }
+    }
+    
+    function saveDividendRecords(records) {
+        try {
+            localStorage.setItem(DIVIDEND_KEY, JSON.stringify(records));
+            return true;
+        } catch (e) { return false; }
+    }
+    
+    function addDividendRecord(record) {
+        const records = getDividendRecords();
+        record.id = 'div_' + generateId();
+        record.createDate = new Date().toISOString().slice(0, 10);
+        records.push(record);
+        saveDividendRecords(records);
+        return record;
+    }
+    
+    function updateDividendRecord(id, updates) {
+        const records = getDividendRecords();
+        const idx = records.findIndex(r => r.id === id);
+        if (idx === -1) return null;
+        records[idx] = { ...records[idx], ...updates };
+        saveDividendRecords(records);
+        return records[idx];
+    }
+    
+    function deleteDividendRecord(id) {
+        const records = getDividendRecords();
+        const filtered = records.filter(r => r.id !== id);
+        if (filtered.length === records.length) return false;
+        saveDividendRecords(filtered);
+        return true;
+    }
+    
+    // 检查某只股票某次分红是否已记录（按代码+除权日去重）
+    function isDividendRecorded(assetCode, exDate) {
+        const records = getDividendRecords();
+        return records.some(r => r.assetCode === assetCode && r.exDate === exDate);
+    }
+    
+    // 获取某资产的所有分红记录
+    function getDividendsByAsset(assetId) {
+        const records = getDividendRecords();
+        return records.filter(r => r.assetId === assetId);
     }
     
     // 导出数据
     function exportData() {
         const assets = getAssets();
         const config = getConfig();
-        return JSON.stringify({ assets, config, exportTime: new Date().toISOString() }, null, 2);
+        const cash = getCashBalance();
+        const dividends = getDividendRecords();
+        return JSON.stringify({ assets, config, cash, dividends, exportTime: new Date().toISOString() }, null, 2);
     }
     
     // 导入数据
@@ -137,6 +226,12 @@ const StorageManager = (function() {
             }
             if (data.config) {
                 saveConfig(data.config);
+            }
+            if (data.cash) {
+                setCashBalance(data.cash);
+            }
+            if (data.dividends && Array.isArray(data.dividends)) {
+                saveDividendRecords(data.dividends);
             }
             return true;
         } catch (e) {
@@ -180,6 +275,18 @@ const StorageManager = (function() {
         exportData,
         importData,
         getHistory,
-        addHistorySnapshot
+        addHistorySnapshot,
+        // 现金
+        getCashBalance,
+        setCashBalance,
+        addCash,
+        deductCash,
+        // 分红
+        getDividendRecords,
+        addDividendRecord,
+        updateDividendRecord,
+        deleteDividendRecord,
+        isDividendRecorded,
+        getDividendsByAsset
     };
 })();
