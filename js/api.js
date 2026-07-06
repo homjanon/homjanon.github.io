@@ -896,9 +896,10 @@ const APIManager = (function() {
         for (const code of aStockCodes) {
             try {
                 const dividends = await fetchDividends(code);
-                // 只取"实施分配"状态且每股金额已知的
+                // 只取"实施分配"状态、每股金额已知、且除权日已到的
+                const today = new Date().toISOString().slice(0, 10);
                 const implemented = dividends.filter(d => 
-                    d.assignProgress === '实施分配' && d.perShare && d.exDate
+                    d.assignProgress === '实施分配' && d.perShare && d.exDate && d.exDate <= today
                 );
                 for (const d of implemented) {
                     // 去重：检查是否已记录
