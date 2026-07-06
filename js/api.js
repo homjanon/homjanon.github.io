@@ -812,7 +812,12 @@ const APIManager = (function() {
                     for (const [key, code] of Object.entries(DJ_INDEX_MAP)) {
                         const item = items.find(i => i.index_code === code);
                         if (item && item.pe) {
-                            result[key] = { value: item.pe, label: '倍', level: LEVEL_MAP[item.eva_type] || '', changePercent: null };
+                            // 红利低波：用股息率代替PE
+                            if (key === 'dividend' && item.yeild != null) {
+                                result[key] = { value: item.yeild, displayValue: item.yeild * 100, label: '%', level: '', changePercent: null };
+                            } else {
+                                result[key] = { value: item.pe, label: '倍', level: LEVEL_MAP[item.eva_type] || '', changePercent: null };
+                            }
                             hasNew = true;
                         }
                     }

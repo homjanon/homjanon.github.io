@@ -357,7 +357,8 @@ const UIManager = (function() {
             
             if (datum && datum.value != null) {
                 const lbl = datum.label || '';
-                let text = datum.value.toFixed(2) + lbl;
+                const num = datum.displayValue != null ? datum.displayValue : datum.value;
+                let text = num.toFixed(2) + lbl;
                 if (datum.level) text += ' · ' + datum.level;
                 elVal.textContent = text;
                 
