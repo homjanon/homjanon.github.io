@@ -215,6 +215,17 @@ const App = (function() {
         }
     }
     
+    // 各资产类型默认税率：A股长持免税0%，港股通10%，美股30%，基金0%
+    function getDefaultTaxRate(type) {
+        switch (type) {
+            case 'a-stock': return 0;
+            case 'hk-stock': return 10;
+            case 'us-stock': return 30;
+            case 'fund': return 0;
+            default: return 10;
+        }
+    }
+    
     // 显示记录分红模态框（自动填入或手动）
     function showDividendModal(prefill = null) {
         // 填充资产下拉列表
@@ -227,8 +238,9 @@ const App = (function() {
         if (prefill && prefill.assetId) {
             select.value = prefill.assetId;
             document.getElementById('div-per-share').value = prefill.perShare || '';
-            // 基金分红免税
-            document.getElementById('div-tax-rate').value = prefill.type === 'fund' ? 0 : 10;
+            // 根据资产类型设置默认税率：A股/基金 0%，港股 10%，美股 30%
+            const prefillType = prefill.type || '';
+            document.getElementById('div-tax-rate').value = getDefaultTaxRate(prefillType);
             // 存储基金除权净值供复投使用
             if (prefill.type === 'fund' && prefill.navAfter) {
                 document.getElementById('div-per-share').dataset.navAfter = prefill.navAfter;
@@ -258,9 +270,9 @@ const App = (function() {
         const type = opt.dataset.type;
         document.getElementById('div-shares').value = opt.dataset.shares || '';
         document.getElementById('div-currency-hint').textContent = '币种：' + (opt.dataset.currency || 'CNY');
-        // 基金：每份 + 免税；股票：每股 + 10%
+        // 基金：每份；股票：每股
         document.querySelector('label[for="div-per-share"]').textContent = type === 'fund' ? '每份分红（原币，税前）' : '每股分红（原币，税前）';
-        document.getElementById('div-tax-rate').value = type === 'fund' ? 0 : 10;
+        document.getElementById('div-tax-rate').value = getDefaultTaxRate(type);
         document.getElementById('div-shares').previousElementSibling.textContent = type === 'fund' ? '持仓份额' : '持股数量';
         calcDividendSummary();
     }
@@ -295,7 +307,7 @@ const App = (function() {
         
         const perShare = parseFloat(document.getElementById('div-per-share').value);
         const shares = parseFloat(document.getElementById('div-shares').value);
-        const taxRate = asset.type === 'fund' ? 0 : (parseFloat(document.getElementById('div-tax-rate').value) || 10);
+        const taxRate = parseFloat(document.getElementById('div-tax-rate').value) || getDefaultTaxRate(asset.type);
         const currency = opt.dataset.currency || 'CNY';
         
         if (!perShare || perShare <= 0 || !shares || shares <= 0) {
