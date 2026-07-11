@@ -372,7 +372,32 @@ const UIManager = (function() {
         };
         
         setCard('ind-vix', data.vix);
-        setCard('ind-nasdaq', data.nasdaqPe);
+        
+        // XXFI: 自定义渲染（值 + 信号徽章）
+        {
+            const elVal = document.getElementById('ind-xxfi-value');
+            const elSig = document.getElementById('ind-xxfi-signal');
+            const d = data.xxfi;
+            if (d && d.value != null) {
+                elVal.textContent = `XXFI = ${d.value.toFixed(1)}`;
+                // 信号颜色映射
+                const signalMap = {
+                    'BUY':         { text: '🔴 BUY · 分批低吸', cls: 'signal-buy' },
+                    'ACCUMULATE':  { text: '🟠 ACCUMULATE · 逢低吸纳', cls: 'signal-accumulate' },
+                    'HOLD':        { text: '⚫ HOLD · 按策略持有', cls: 'signal-hold' },
+                    'REDUCE':      { text: '🟡 REDUCE · 逢高减仓', cls: 'signal-reduce' },
+                    'SELL':        { text: '🟢 SELL · 减仓避险', cls: 'signal-sell' }
+                };
+                const sig = signalMap[d.signal] || { text: d.signal, cls: '' };
+                elSig.textContent = sig.text;
+                elSig.className = `indicator-change ${sig.cls}`;
+            } else {
+                elVal.textContent = '--';
+                elSig.textContent = '';
+                elSig.className = 'indicator-change';
+            }
+        }
+        
         setCard('ind-sp500', data.sp500Pe);
         setCard('ind-csi300', data.csi300Pe);
         setCard('ind-star50', data.star50);

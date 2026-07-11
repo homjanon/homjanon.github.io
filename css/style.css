@@ -714,6 +714,7 @@ body {
 .indicator-icon.red { background: #fef2f2; }
 .indicator-icon.blue { background: #eff6ff; }
 .indicator-icon.green { background: #f0fdf4; }
+.indicator-icon.orange { background: #fff7ed; }
 
 .indicator-body {
     min-width: 0;
@@ -740,6 +741,11 @@ body {
 
 .indicator-change.up { color: #ef4444; }
 .indicator-change.down { color: #10b981; }
+.indicator-change.signal-buy { color: #dc2626; font-weight: 600; }
+.indicator-change.signal-accumulate { color: #ea580c; font-weight: 600; }
+.indicator-change.signal-hold { color: #4b5563; font-weight: 600; }
+.indicator-change.signal-reduce { color: #d97706; font-weight: 600; }
+.indicator-change.signal-sell { color: #059669; font-weight: 600; }
 
 .indicator-hint {
     font-size: 10px;

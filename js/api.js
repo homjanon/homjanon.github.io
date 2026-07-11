@@ -779,7 +779,7 @@ const APIManager = (function() {
     function isCacheComplete(data) {
         if (!data || !data.vix) return false;  // VIX必须有（Yahoo不稳定允许缺失）
         // PE至少要有几个核心的
-        const keys = ['csi300Pe', 'nasdaqPe', 'sp500Pe'];
+        const keys = ['csi300Pe', 'sp500Pe', 'xxfi'];
         return keys.every(k => data[k] && data[k].value != null);
     }
     
@@ -787,7 +787,7 @@ const APIManager = (function() {
         const cached = getCachedIndicators();
         if (cached && isCacheComplete(cached)) return cached;
         
-        const result = cached ? { ...cached } : { vix: null, nasdaqPe: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
+        const result = cached ? { ...cached } : { vix: null, xxfi: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         let hasNew = false;
         
         // VIX: Yahoo（仅在缺失或缓存过期时重试）
@@ -823,6 +823,23 @@ const APIManager = (function() {
                     }
                 }
             } catch (e) { console.warn('蛋卷PE失败:', e.message); }
+        }
+        
+        // 小旭恐慌指数(XXFI): raw GitHub（独立获取，不依赖蛋卷）
+        if (!result.xxfi) {
+            try {
+                const xxfiData = await fetchAPI('https://raw.githubusercontent.com/homjanon/xiaoxu-fear/main/output/xxfi_report.json');
+                if (xxfiData && xxfiData.XXFI != null) {
+                    result.xxfi = {
+                        value: xxfiData.XXFI,
+                        signal: xxfiData.contrarian_signal || '',
+                        level: xxfiData.level || '',
+                        advice: xxfiData.advice || '',
+                        dataDate: xxfiData._data_date || ''
+                    };
+                    hasNew = true;
+                }
+            } catch (e) { console.warn('XXFI失败:', e.message); }
         }
         
         if (hasNew) saveCachedIndicators(result);
