@@ -848,10 +848,15 @@ const APIManager = (function() {
                 const cmb = await fetchAPI('https://raw.githubusercontent.com/homjanon/cmb-tracker/main/output/cmb_report.json');
                 if (cmb && Array.isArray(cmb.banks)) {
                     const sorted = [...cmb.banks].sort((a, b) => b.score_total - a.score_total);
+                    // 招行(600036)买入区间
+                    const zhStock = sorted.find(b => b.code === '600036');
                     result.cmbFiveDim = {
                         dataDate: cmb.data_date || '',
                         count: cmb.summary.total_banks,
                         buys: cmb.summary.buy + cmb.summary.strong_buy,
+                        zhPrice: zhStock ? zhStock.price : null,
+                        zhZoneLow: zhStock ? zhStock.zone_low : null,
+                        zhZoneHigh: zhStock ? zhStock.zone_high : null,
                         banks: sorted.map(b => ({
                             name: b.short || b.name,
                             score: b.score_total,

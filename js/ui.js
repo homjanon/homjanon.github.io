@@ -398,14 +398,20 @@ const UIManager = (function() {
             }
         }
         
-        // 银行五维: 自定义渲染（6行得分全量+信号摘要）
+        // 银行五维: 自定义渲染（招行买入区间+6行得分全量）
         {
             const elVal = document.getElementById('ind-bank-value');
             const elTop = document.getElementById('ind-bank-top');
             const elDate = document.getElementById('ind-bank-date');
             const d = data.cmbFiveDim;
             if (d && d.banks && d.banks.length) {
-                elVal.textContent = `${d.buys}/${d.count}行 BUY`;
+                let zhText = '';
+                if (d.zhPrice != null && d.zhZoneLow != null && d.zhZoneHigh != null) {
+                    zhText = `招行${d.zhPrice.toFixed(2)} 买区${d.zhZoneLow.toFixed(2)}-${d.zhZoneHigh.toFixed(2)}`;
+                } else {
+                    zhText = `${d.buys}/${d.count}行 BUY`;
+                }
+                elVal.textContent = zhText;
                 elVal.className = d.buys >= d.count ? 'indicator-value positive' : 'indicator-value';
                 elTop.textContent = d.banks.map(b => `${b.name}${b.score.toFixed(1)}`).join(' · ');
                 elTop.className = 'indicator-change';
