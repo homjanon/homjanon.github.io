@@ -773,6 +773,11 @@ body {
     line-height: 1.4;
 }
 
+/* 全宽卡片（手机端占整行） */
+.indicator-wide {
+    grid-column: auto;
+}
+
 /* 移动端 */
 @media (max-width: 640px) {
     .indicators-grid {
@@ -807,6 +812,9 @@ body {
     }
     .indicator-hint {
         font-size: 9px;
+    }
+    .indicator-wide {
+        grid-column: 1 / -1;
     }
     .indicators-grid {
         grid-template-columns: repeat(2, 1fr);
