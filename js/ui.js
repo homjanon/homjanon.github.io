@@ -417,6 +417,50 @@ const UIManager = (function() {
             }
         }
         
+        // 秋哥操作: 自定义渲染（大盘点位+关键位+操作指引+推荐标的）
+        {
+            const elVal = document.getElementById('ind-qiuge-value');
+            const elLv = document.getElementById('ind-qiuge-levels');
+            const elGuide = document.getElementById('ind-qiuge-guide');
+            const elPicks = document.getElementById('ind-qiuge-picks');
+            const elDate = document.getElementById('ind-qiuge-date');
+            const d = data.qiuge;
+            if (d && d.indexClose != null) {
+                const pct = d.indexChange != null ? d.indexChange : 0;
+                const sign = pct >= 0 ? '+' : '';
+                elVal.textContent = `${d.indexName} ${d.indexClose.toFixed(2)}(${sign}${pct.toFixed(2)}%)`;
+                elLv.textContent = `${d.support}生命线 · ${d.pressure}压力`;
+                
+                // 按当前点位动态显示操作指引
+                let guideHtml = '';
+                const close = d.indexClose;
+                if (close > d.pressure) {
+                    guideHtml = '<span class="positive">🟢 &gt;' + d.pressure + ' 加至7成</span> · <span class="up">📈 反弹升级</span>';
+                } else if (close >= d.support) {
+                    guideHtml = '<span style="color:#d97706">🟡 仓位≤' + (d.positionMax * 100) + '成</span> · ' +
+                                '<span style="color:#d97706">⚠️ 跌破' + d.support + '则降仓</span>';
+                } else {
+                    guideHtml = '<span class="negative">🔴 有效跌破' + d.support + '</span> · ' +
+                                '<span class="negative">🏠 全面降仓留招行</span>';
+                }
+                elGuide.innerHTML = guideHtml;
+                elGuide.className = 'indicator-change';
+                
+                // 推荐标的（紧凑展示）
+                const picks = d.picks.join(' · ');
+                const watchStr = d.watch.length ? ` · ${d.watch.join('·')}(等)` : '';
+                elPicks.textContent = picks + watchStr;
+                
+                elDate.textContent = `${d.dataDate} · ${d.outlook}`;
+            } else {
+                elVal.textContent = '--';
+                elLv.textContent = '';
+                elGuide.textContent = '';
+                elPicks.textContent = '';
+                elDate.textContent = '';
+            }
+        }
+        
         setCard('ind-sp500', data.sp500Pe);
         setCard('ind-csi300', data.csi300Pe);
         setCard('ind-star50', data.star50);

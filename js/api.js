@@ -779,7 +779,7 @@ const APIManager = (function() {
     function isCacheComplete(data) {
         if (!data || !data.vix) return false;  // VIX必须有（Yahoo不稳定允许缺失）
         // PE至少要有几个核心的
-        const keys = ['csi300Pe', 'sp500Pe', 'xxfi', 'cmbFiveDim'];
+        const keys = ['csi300Pe', 'sp500Pe', 'xxfi', 'cmbFiveDim', 'qiuge'];
         return keys.every(k => data[k] && data[k].value != null);
     }
     
@@ -787,7 +787,7 @@ const APIManager = (function() {
         const cached = getCachedIndicators();
         if (cached && isCacheComplete(cached)) return cached;
         
-        const result = cached ? { ...cached } : { vix: null, xxfi: null, cmbFiveDim: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
+        const result = cached ? { ...cached } : { vix: null, xxfi: null, cmbFiveDim: null, qiuge: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         let hasNew = false;
         
         // VIX: Yahoo（仅在缺失或缓存过期时重试）
@@ -861,6 +861,33 @@ const APIManager = (function() {
                     hasNew = true;
                 }
             } catch (e) { console.warn('银行五维失败:', e.message); }
+        }
+        
+        // 秋哥操作: raw GitHub（每次运行秋哥Skill后AI自动推送）
+        if (!result.qiuge) {
+            try {
+                const qg = await fetchAPI('https://raw.githubusercontent.com/homjanon/xiaoxu-fear/main/output/qiuge_report.json');
+                if (qg && qg.data_date && qg.index) {
+                    result.qiuge = {
+                        dataDate: qg.data_date,
+                        reportType: qg.report_type || '',
+                        indexName: qg.index.name || '上证指数',
+                        indexClose: qg.index.close,
+                        indexChange: qg.index.change_pct,
+                        support: qg.levels.support,
+                        pressure: qg.levels.pressure,
+                        strongSupport: qg.levels.strong_support,
+                        positionMax: qg.position_max,
+                        picks: qg.picks_name || [],
+                        picksDetail: qg.picks_detail || [],
+                        watch: qg.watch || [],
+                        avoid: qg.avoid || [],
+                        outlook: qg.outlook || '',
+                        summary: qg.summary || ''
+                    };
+                    hasNew = true;
+                }
+            } catch (e) { console.warn('秋哥操作失败:', e.message); }
         }
         
         if (hasNew) saveCachedIndicators(result);
