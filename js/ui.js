@@ -398,20 +398,21 @@ const UIManager = (function() {
             }
         }
         
-        // 银行五维: 自定义渲染（招行买入区间+股息）
+        // 银行五维: 三行 — 价格 / 买区 / 股息
         {
             const elVal = document.getElementById('ind-bank-value');
+            const elZone = document.getElementById('ind-bank-zone');
             const elYield = document.getElementById('ind-bank-yield');
             const elDate = document.getElementById('ind-bank-date');
             const d = data.cmbFiveDim;
             if (d && d.banks && d.banks.length) {
-                let zhText = '';
                 if (d.zhPrice != null && d.zhZoneLow != null && d.zhZoneHigh != null) {
-                    zhText = `招行${d.zhPrice.toFixed(2)} 买区${d.zhZoneLow.toFixed(2)}-${d.zhZoneHigh.toFixed(2)}`;
+                    elVal.textContent = `招行${d.zhPrice.toFixed(2)}`;
+                    elZone.textContent = `买区${d.zhZoneLow.toFixed(2)}-${d.zhZoneHigh.toFixed(2)}`;
                 } else {
-                    zhText = `${d.buys}/${d.count}行 BUY`;
+                    elVal.textContent = `${d.buys}/${d.count}行 BUY`;
+                    elZone.textContent = '';
                 }
-                elVal.textContent = zhText;
                 if (d.zhDivYield != null) {
                     elYield.textContent = `股息 ${d.zhDivYield.toFixed(2)}%`;
                     elYield.className = 'indicator-change';
@@ -421,6 +422,7 @@ const UIManager = (function() {
                 elDate.textContent = `数据: ${d.dataDate}`;
             } else {
                 elVal.textContent = '--';
+                elZone.textContent = '';
                 elYield.textContent = '';
                 elDate.textContent = '';
             }
