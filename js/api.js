@@ -779,7 +779,7 @@ const APIManager = (function() {
     function isCacheComplete(data) {
         if (!data || !data.vix) return false;  // VIX必须有（Yahoo不稳定允许缺失）
         // PE至少要有几个核心的
-        const keys = ['csi300Pe', 'sp500Pe', 'xxfi'];
+        const keys = ['csi300Pe', 'sp500Pe', 'xxfi', 'cmbFiveDim'];
         return keys.every(k => data[k] && data[k].value != null);
     }
     
@@ -787,7 +787,7 @@ const APIManager = (function() {
         const cached = getCachedIndicators();
         if (cached && isCacheComplete(cached)) return cached;
         
-        const result = cached ? { ...cached } : { vix: null, xxfi: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
+        const result = cached ? { ...cached } : { vix: null, xxfi: null, cmbFiveDim: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         let hasNew = false;
         
         // VIX: Yahoo（仅在缺失或缓存过期时重试）
@@ -840,6 +840,27 @@ const APIManager = (function() {
                     hasNew = true;
                 }
             } catch (e) { console.warn('XXFI失败:', e.message); }
+        }
+        
+        // 银行五维(cmb-tracker): raw GitHub（每日盘后更新）
+        if (!result.cmbFiveDim) {
+            try {
+                const cmb = await fetchAPI('https://raw.githubusercontent.com/homjanon/cmb-tracker/main/output/cmb_report.json');
+                if (cmb && Array.isArray(cmb.banks)) {
+                    const sorted = [...cmb.banks].sort((a, b) => b.score_total - a.score_total);
+                    result.cmbFiveDim = {
+                        dataDate: cmb.data_date || '',
+                        count: cmb.summary.total_banks,
+                        buys: cmb.summary.buy + cmb.summary.strong_buy,
+                        banks: sorted.map(b => ({
+                            name: b.short || b.name,
+                            score: b.score_total,
+                            signal: b.signal
+                        }))
+                    };
+                    hasNew = true;
+                }
+            } catch (e) { console.warn('银行五维失败:', e.message); }
         }
         
         if (hasNew) saveCachedIndicators(result);

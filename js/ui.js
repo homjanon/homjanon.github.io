@@ -396,6 +396,26 @@ const UIManager = (function() {
                 elSig.textContent = '';
                 elSig.className = 'indicator-change';
             }
+        } catch (e) { console.warn('XXFI失败:', e.message); }
+        }
+        
+        // 银行五维: 自定义渲染（6行得分全量+信号摘要）
+        {
+            const elVal = document.getElementById('ind-bank-value');
+            const elTop = document.getElementById('ind-bank-top');
+            const elDate = document.getElementById('ind-bank-date');
+            const d = data.cmbFiveDim;
+            if (d && d.banks && d.banks.length) {
+                elVal.textContent = `${d.buys}/${d.count}行 BUY`;
+                elVal.className = d.buys >= d.count ? 'indicator-value positive' : 'indicator-value';
+                elTop.textContent = d.banks.map(b => `${b.name}${b.score.toFixed(1)}`).join(' · ');
+                elTop.className = 'indicator-change';
+                elDate.textContent = `数据: ${d.dataDate}`;
+            } else {
+                elVal.textContent = '--';
+                elTop.textContent = '';
+                elDate.textContent = '';
+            }
         }
         
         setCard('ind-sp500', data.sp500Pe);
