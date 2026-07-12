@@ -396,7 +396,6 @@ const UIManager = (function() {
                 elSig.textContent = '';
                 elSig.className = 'indicator-change';
             }
-        } catch (e) { console.warn('XXFI失败:', e.message); }
         }
         
         // 银行五维: 自定义渲染（6行得分全量+信号摘要）
