@@ -850,6 +850,12 @@ const APIManager = (function() {
                     const sorted = [...cmb.banks].sort((a, b) => b.score_total - a.score_total);
                     // 招行(600036)买入区间
                     const zhStock = sorted.find(b => b.code === '600036');
+                    // 前三名买入区间
+                    const top3 = sorted.slice(0, 3).map(b => ({
+                        name: b.short || b.name,
+                        zoneLow: b.zone_low,
+                        zoneHigh: b.zone_high
+                    }));
                     result.cmbFiveDim = {
                         dataDate: cmb.data_date || '',
                         count: cmb.summary.total_banks,
@@ -857,6 +863,7 @@ const APIManager = (function() {
                         zhPrice: zhStock ? zhStock.price : null,
                         zhZoneLow: zhStock ? zhStock.zone_low : null,
                         zhZoneHigh: zhStock ? zhStock.zone_high : null,
+                        top3: top3,
                         banks: sorted.map(b => ({
                             name: b.short || b.name,
                             score: b.score_total,
