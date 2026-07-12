@@ -398,10 +398,11 @@ const UIManager = (function() {
             }
         }
         
-        // 银行五维: 自定义渲染（招行买入区间+6行得分全量）
+        // 银行五维: 自定义渲染（招行买入区间+股息）
         {
             const elVal = document.getElementById('ind-bank-value');
             const elTop = document.getElementById('ind-bank-top');
+            const elYield = document.getElementById('ind-bank-yield');
             const elDate = document.getElementById('ind-bank-date');
             const d = data.cmbFiveDim;
             if (d && d.banks && d.banks.length) {
@@ -414,15 +415,22 @@ const UIManager = (function() {
                 elVal.textContent = zhText;
                 elVal.className = d.buys >= d.count ? 'indicator-value positive' : 'indicator-value';
                 elTop.textContent = d.top2_3.map(b => {
-    const low = b.zoneLow != null ? b.zoneLow.toFixed(1) : '?';
-    const high = b.zoneHigh != null ? b.zoneHigh.toFixed(1) : '?';
-    return `${b.name}${low}-${high}`;
-}).join(' · ');
-                elTop.className = 'indicator-change';
+                    const low = b.zoneLow != null ? b.zoneLow.toFixed(1) : '?';
+                    const high = b.zoneHigh != null ? b.zoneHigh.toFixed(1) : '?';
+                    return `${b.name}${low}-${high}`;
+                }).join(' · ');
+                elTop.className = 'indicator-sub';
+                if (d.zhDivYield != null) {
+                    elYield.textContent = `股息 ${d.zhDivYield.toFixed(2)}%`;
+                    elYield.className = 'indicator-change';
+                } else {
+                    elYield.textContent = '';
+                }
                 elDate.textContent = `数据: ${d.dataDate}`;
             } else {
                 elVal.textContent = '--';
                 elTop.textContent = '';
+                elYield.textContent = '';
                 elDate.textContent = '';
             }
         }
@@ -461,12 +469,27 @@ const UIManager = (function() {
                 const watchStr = d.watch.length ? ` · ${d.watch.join('·')}(等)` : '';
                 elPicks.textContent = picks + watchStr;
                 
-                elDate.textContent = `${d.dataDate} · ${d.outlook}`;
+                elDate.textContent = `${d.dataDate}`;
             } else {
                 elVal.textContent = '--';
                 elLv.textContent = '';
                 elGuide.textContent = '';
                 elPicks.textContent = '';
+                elDate.textContent = '';
+            }
+        }
+        
+        // 一句话总结: 秋哥全文
+        {
+            const elSummary = document.getElementById('ind-qiuge-summary');
+            const elDate = document.getElementById('ind-qiuge-summary-date');
+            const d = data.qiuge;
+            if (d && d.summary) {
+                elSummary.textContent = d.summary;
+                elSummary.className = 'indicator-summary';
+                elDate.textContent = d.dataDate || '';
+            } else {
+                elSummary.textContent = '--';
                 elDate.textContent = '';
             }
         }

@@ -863,6 +863,7 @@ const APIManager = (function() {
                         zhPrice: zhStock ? zhStock.price : null,
                         zhZoneLow: zhStock ? zhStock.zone_low : null,
                         zhZoneHigh: zhStock ? zhStock.zone_high : null,
+                        zhDivYield: zhStock ? zhStock.div_yield : null,
                         top2_3: top2_3,
                         banks: sorted.map(b => ({
                             name: b.short || b.name,
