@@ -779,15 +779,14 @@ const APIManager = (function() {
     function isCacheComplete(data) {
         if (!data || !data.vix) return false;  // VIX必须有（Yahoo不稳定允许缺失）
         // PE至少要有几个核心的
-        const keys = ['csi300Pe', 'sp500Pe', 'xxfi', 'cmbFiveDim', 'qiuge'];
+        const keys = ['csi300Pe', 'sp500Pe', 'xxfi'];
         return keys.every(k => data[k] && data[k].value != null);
     }
     
     async function fetchIndicators() {
         const cached = getCachedIndicators();
-        if (cached && isCacheComplete(cached)) return cached;
-        
-        const result = cached ? { ...cached } : { vix: null, xxfi: null, cmbFiveDim: null, qiuge: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
+        // 缓存仅用于VIX/PE/XXFI（减少请求），银行五维/秋哥操作每次都实时拉取
+        const result = cached ? { ...cached } : { vix: null, xxfi: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         let hasNew = false;
         
         // VIX: Yahoo（仅在缺失或缓存过期时重试）
@@ -842,8 +841,8 @@ const APIManager = (function() {
             } catch (e) { console.warn('XXFI失败:', e.message); }
         }
         
-        // 银行五维(cmb-tracker): raw GitHub（每日盘后更新）
-        if (!result.cmbFiveDim) {
+        // 银行五维(cmb-tracker): raw GitHub（实时拉取，不缓存）
+        {
             try {
                 const cmb = await fetchAPI('https://raw.githubusercontent.com/homjanon/cmb-tracker/main/output/cmb_report.json');
                 if (cmb && Array.isArray(cmb.banks)) {
@@ -876,8 +875,8 @@ const APIManager = (function() {
             } catch (e) { console.warn('银行五维失败:', e.message); }
         }
         
-        // 秋哥操作: raw GitHub（每次运行秋哥Skill后AI自动推送）
-        if (!result.qiuge) {
+        // 秋哥操作: raw GitHub（每次实时拉取，不缓存）
+        {
             try {
                 const qg = await fetchAPI('https://raw.githubusercontent.com/homjanon/xiaoxu-fear/main/output/qiuge_report.json');
                 if (qg && qg.data_date && qg.index) {
