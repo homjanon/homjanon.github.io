@@ -413,7 +413,7 @@ const UIManager = (function() {
                 }
                 elVal.textContent = zhText;
                 elVal.className = d.buys >= d.count ? 'indicator-value positive' : 'indicator-value';
-                elTop.textContent = d.top3.map(b => {
+                elTop.textContent = d.top2_3.map(b => {
     const low = b.zoneLow != null ? b.zoneLow.toFixed(1) : '?';
     const high = b.zoneHigh != null ? b.zoneHigh.toFixed(1) : '?';
     return `${b.name}${low}-${high}`;
