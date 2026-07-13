@@ -779,14 +779,14 @@ const APIManager = (function() {
     function isCacheComplete(data) {
         if (!data || !data.vix) return false;  // VIX必须有（Yahoo不稳定允许缺失）
         // PE至少要有几个核心的
-        const keys = ['csi300Pe', 'sp500Pe', 'xxfi'];
+        const keys = ['csi300Pe', 'sp500Pe'];
         return keys.every(k => data[k] && data[k].value != null);
     }
     
     async function fetchIndicators() {
         const cached = getCachedIndicators();
-        // 缓存仅用于VIX/PE/XXFI（减少请求），银行五维/秋哥操作每次都实时拉取
-        const result = cached ? { ...cached } : { vix: null, xxfi: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
+        // 缓存仅用于VIX/PE（减少请求）；银行五维/秋哥/XXFI 每次实时拉取，不缓存
+        const result = cached ? { ...cached, xxfi: null } : { vix: null, xxfi: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         let hasNew = false;
         
         // VIX: Yahoo（仅在缺失或缓存过期时重试）
@@ -825,7 +825,8 @@ const APIManager = (function() {
         }
         
         // 小旭恐慌指数(XXFI): raw GitHub（独立获取，不依赖蛋卷）
-        if (!result.xxfi) {
+        // 实时拉取，不缓存（与 cmb/秋哥一致；跨仓库产物可随时手动重跑，半天缓存会导致旧值卡死）
+        {
             try {
                 const xxfiData = await fetchAPI('https://raw.githubusercontent.com/homjanon/xiaoxu-fear/main/output/xxfi_report.json');
                 if (xxfiData && xxfiData.XXFI != null) {

@@ -373,10 +373,11 @@ const UIManager = (function() {
         
         setCard('ind-vix', data.vix);
         
-        // XXFI: 自定义渲染（值 + 信号徽章）
+        // XXFI: 自定义渲染（值 + 信号徽章 + 数据日期）
         {
             const elVal = document.getElementById('ind-xxfi-value');
             const elSig = document.getElementById('ind-xxfi-signal');
+            const elDate = document.getElementById('ind-xxfi-date');
             const d = data.xxfi;
             if (d && d.value != null) {
                 elVal.textContent = `XXFI = ${d.value.toFixed(1)}`;
@@ -391,10 +392,13 @@ const UIManager = (function() {
                 const sig = signalMap[d.signal] || { text: d.signal, cls: '' };
                 elSig.textContent = sig.text;
                 elSig.className = `indicator-change ${sig.cls}`;
+                // 数据日期（实时拉取，显示来源日期便于判断新鲜度）
+                if (elDate) elDate.textContent = d.dataDate ? `数据日期：${d.dataDate}` : '';
             } else {
                 elVal.textContent = '--';
                 elSig.textContent = '';
                 elSig.className = 'indicator-change';
+                if (elDate) elDate.textContent = '';
             }
         }
         
