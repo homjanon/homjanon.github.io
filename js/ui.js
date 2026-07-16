@@ -251,6 +251,9 @@ const UIManager = (function() {
                             <button class="btn btn-sm btn-success" onclick="App.recordDividend('${asset.id}')" title="记录分红">
                                 <i class="fas fa-gift"></i> 分红
                             </button>
+                            ${asset.type === 'fund' ? `<button class="btn btn-sm btn-info" onclick="App.showBuyMoreModal('${asset.id}')" title="基金补仓">
+                                <i class="fas fa-plus-circle"></i> 补仓
+                            </button>` : ''}
                             <button class="btn btn-sm btn-info" onclick="App.refreshAsset('${asset.id}')">
                                 <i class="fas fa-sync-alt"></i> 刷新
                             </button>

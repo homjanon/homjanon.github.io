@@ -640,6 +640,78 @@ const APIManager = (function() {
         };
     }
     
+    // 解析东方财富 lsjz 历史净值接口返回的多行数据
+    // 返回数组，按接口顺序（最新日期在前）
+    function parseLsjzRows(raw) {
+        const rows = [];
+        if (!raw) return rows;
+        // 1. HTML 表格格式
+        const trRe = /<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/g;
+        let m;
+        let htmlMatched = false;
+        while ((m = trRe.exec(raw)) !== null) {
+            htmlMatched = true;
+            const navDate = (m[1] || '').trim();
+            const nav = parseFloat(m[2]) || 0;
+            const changeStr = (m[4] || '').replace('%', '').trim();
+            rows.push({ navDate, nav, changePercent: parseFloat(changeStr) || 0 });
+        }
+        if (htmlMatched) return rows;
+        // 2. 纯文本格式：7 个表头 + 7 个数据一组，空格/换行分隔
+        const parts = raw.trim().split(/[\s]+/);
+        for (let i = 0; i < parts.length; i++) {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(parts[i])) {
+                const navDate = parts[i];
+                const nav = parseFloat(parts[i + 1]) || 0;
+                const changeStr = (parts[i + 3] || '').replace('%', '').trim();
+                rows.push({ navDate, nav, changePercent: parseFloat(changeStr) || 0 });
+                i += 6; // 跳过本条剩余字段，下一日期在 7 个字段之后
+            }
+        }
+        return rows;
+    }
+    
+    // 获取指定日期（或之前最近交易日）的基金单位净值
+    // targetDate: 'YYYY-MM-DD'；用于补仓按历史净值计算份额
+    async function getFundNavByDate(code, targetDate) {
+        let page = 1;
+        const MAX_PAGE = 6;
+        let collected = [];
+        while (page <= MAX_PAGE) {
+            const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz`
+                + `&code=${code}&sdate=2001-01-01&edate=${targetDate}&page=${page}&per=30&rt=${Date.now()}`;
+            let apidata;
+            try {
+                apidata = await injectScript(url, 'apidata');
+            } catch (e) {
+                break;
+            }
+            if (!apidata || !apidata.content) break;
+            const rows = parseLsjzRows(apidata.content);
+            if (rows.length === 0) break;
+            collected = collected.concat(rows);
+            // rows 最新在前；若本页最早日期已 <= targetDate，说明已覆盖到目标日，停止翻页
+            const earliest = rows[rows.length - 1].navDate;
+            if (earliest <= targetDate) break;
+            page++;
+        }
+        if (collected.length === 0) {
+            throw new Error(`未查到基金 ${code} 在 ${targetDate} 及之前的净值`);
+        }
+        // 取 navDate <= targetDate 且净值有效中日期最新的一条（collected 最新在前）
+        const candidates = collected.filter(r => r.navDate <= targetDate && r.nav > 0);
+        if (candidates.length === 0) {
+            throw new Error(`未查到基金 ${code} 在 ${targetDate} 及之前的净值`);
+        }
+        const best = candidates[0];
+        return {
+            code, name: code,
+            nav: best.nav, estimateNav: best.nav, price: best.nav,
+            navDate: best.navDate, changePercent: best.changePercent,
+            timestamp: Date.now()
+        };
+    }
+    
     async function getEastMoneyFundName(code) {
         try {
             const fS_name = await injectScript(
@@ -1187,7 +1259,7 @@ const APIManager = (function() {
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
         getFundJSONP, getFundNav,
-        getEastMoneyFundNav, getEastMoneyFundName,
+        getEastMoneyFundNav, getEastMoneyFundName, getFundNavByDate,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,

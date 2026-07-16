@@ -167,6 +167,19 @@ const App = (function() {
             if (e.target.id === 'modal-dividend-list') hideModal('modal-dividend-list');
         });
         
+        // 补仓模态框相关事件
+        document.getElementById('bm-modal-close').addEventListener('click', () => hideModal('modal-buymore'));
+        document.getElementById('bm-btn-cancel').addEventListener('click', () => hideModal('modal-buymore'));
+        document.getElementById('form-buymore').addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitBuyMore();
+        });
+        document.getElementById('bm-amount').addEventListener('input', calcBuyMoreSummary);
+        document.getElementById('bm-date').addEventListener('input', calcBuyMoreSummary);
+        document.getElementById('modal-buymore').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-buymore') hideModal('modal-buymore');
+        });
+        
         // 现金卡片点击编辑
         document.getElementById('cash-card').addEventListener('click', () => {
             UIManager.showCashEditModal();
@@ -405,6 +418,105 @@ const App = (function() {
         StorageManager.deleteDividendRecord(dividendId);
         UIManager.showToast('已删除', 'success');
         UIManager.renderDividendList();
+        render();
+    }
+    
+    // ==================== 基金补仓 ====================
+    
+    // 显示补仓模态框（从基金卡片调用）
+    function showBuyMoreModal(assetId) {
+        const asset = StorageManager.getAssetById(assetId);
+        if (!asset) { UIManager.showToast('未找到资产', 'error'); return; }
+        if (asset.type !== 'fund') { UIManager.showToast('补仓功能仅支持基金', 'error'); return; }
+        
+        document.getElementById('bm-asset-id').value = asset.id;
+        document.getElementById('bm-asset-name').textContent = `${asset.name || asset.code} (${asset.code})`;
+        document.getElementById('bm-currency').textContent = asset.currency || 'CNY';
+        document.getElementById('bm-amount').value = '';
+        document.getElementById('bm-date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('bm-deduct-cash').checked = true;
+        document.getElementById('bm-summary').style.display = 'none';
+        showModal('modal-buymore');
+    }
+    
+    // 实时计算补仓摘要（含按日期拉取净值）
+    async function calcBuyMoreSummary() {
+        const assetId = document.getElementById('bm-asset-id').value;
+        const asset = StorageManager.getAssetById(assetId);
+        const amount = parseFloat(document.getElementById('bm-amount').value);
+        const date = document.getElementById('bm-date').value;
+        const summary = document.getElementById('bm-summary');
+        if (!asset || !amount || amount <= 0 || !date) {
+            summary.style.display = 'none';
+            return;
+        }
+        try {
+            const navInfo = await APIManager.getFundNavByDate(asset.code, date);
+            const nav = navInfo.nav;
+            if (!nav || nav <= 0) { summary.style.display = 'none'; return; }
+            const addShares = amount / nav;
+            const oldShares = asset.shares || 0;
+            const oldTotal = (asset.cost || 0) * oldShares;
+            const newShares = oldShares + addShares;
+            const newCost = (oldTotal + amount) / newShares;
+            const newVal = (asset.currentPrice || 0) * newShares;
+            const navEl = document.getElementById('bm-nav');
+            navEl.textContent = `${nav.toFixed(4)}（${navInfo.navDate}）`;
+            navEl.dataset.nav = nav;
+            navEl.dataset.navDate = navInfo.navDate;
+            document.getElementById('bm-new-shares').textContent = '+' + addShares.toFixed(2) + ' 份';
+            document.getElementById('bm-new-cost').textContent = UIManager.formatCurrency(newCost, asset.currency);
+            document.getElementById('bm-new-value').textContent = UIManager.formatCurrency(newVal, asset.currency);
+            summary.style.display = 'block';
+        } catch (e) {
+            const navEl = document.getElementById('bm-nav');
+            navEl.textContent = '净值获取失败';
+            document.getElementById('bm-new-shares').textContent = '--';
+            document.getElementById('bm-new-cost').textContent = '--';
+            document.getElementById('bm-new-value').textContent = '--';
+            summary.style.display = 'block';
+        }
+    }
+    
+    // 提交补仓：按加仓日期净值加权计算新份额与成本价，默认同步扣减现金
+    async function submitBuyMore() {
+        const assetId = document.getElementById('bm-asset-id').value;
+        const asset = StorageManager.getAssetById(assetId);
+        const amount = parseFloat(document.getElementById('bm-amount').value);
+        const date = document.getElementById('bm-date').value;
+        const deductCash = document.getElementById('bm-deduct-cash').checked;
+        
+        if (!asset) { UIManager.showToast('未找到资产', 'error'); return; }
+        if (!amount || amount <= 0) { UIManager.showToast('请输入加仓金额', 'error'); return; }
+        if (!date) { UIManager.showToast('请选择加仓日期', 'error'); return; }
+        
+        let navInfo;
+        try {
+            navInfo = await APIManager.getFundNavByDate(asset.code, date);
+        } catch (e) {
+            UIManager.showToast('净值获取失败：' + e.message, 'error');
+            return;
+        }
+        const nav = navInfo.nav;
+        if (!nav || nav <= 0) { UIManager.showToast('该日期无有效净值', 'error'); return; }
+        
+        // 默认同步扣减对应币种现金余额
+        if (deductCash) {
+            if (!StorageManager.deductCash(amount, asset.currency)) {
+                UIManager.showToast('现金余额不足', 'error');
+                return;
+            }
+        }
+        
+        const addShares = amount / nav;
+        const oldShares = asset.shares || 0;
+        const oldTotal = (asset.cost || 0) * oldShares;
+        const newShares = oldShares + addShares;
+        const newCost = (oldTotal + amount) / newShares;
+        
+        StorageManager.updateAsset(assetId, { shares: newShares, cost: newCost });
+        UIManager.showToast(`补仓成功：+${addShares.toFixed(2)} 份 @净值 ${nav.toFixed(4)}（${navInfo.navDate}）`, 'success');
+        hideModal('modal-buymore');
         render();
     }
     
@@ -867,10 +979,12 @@ const App = (function() {
         recordDividend,
         reinvestDividend,
         deleteDividend,
+        showBuyMoreModal,
+        submitBuyMore,
         exportData,
         importData
     };
-    
+
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', init);
     
@@ -887,6 +1001,8 @@ const App = (function() {
         recordDividend,
         reinvestDividend,
         deleteDividend,
+        showBuyMoreModal,
+        submitBuyMore,
         exportData,
         importData
     };

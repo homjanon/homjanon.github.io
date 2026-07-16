@@ -425,6 +425,51 @@
         </div>
     </div>
 
+    <!-- 基金补仓模态框 -->
+    <div id="modal-buymore" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📈 基金补仓</h2>
+                <button class="modal-close" id="bm-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-buymore">
+                    <input type="hidden" id="bm-asset-id">
+                    <div class="form-group">
+                        <label>基金</label>
+                        <div id="bm-asset-name" style="font-weight:600;margin:4px 0;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm-amount">加仓金额（<span id="bm-currency">CNY</span>）</label>
+                        <input type="number" id="bm-amount" step="0.01" min="0" placeholder="如：1000" required>
+                        <small class="form-hint">按加仓日期的单位净值计算新增份额（不扣申购费）</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm-date">加仓日期（按当日净值）</label>
+                        <input type="date" id="bm-date" required>
+                        <small class="form-hint">默认当天；非交易日取之前最近交易日净值</small>
+                    </div>
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+                            <input type="checkbox" id="bm-deduct-cash" checked>
+                            同步扣减对应币种现金余额
+                        </label>
+                    </div>
+                    <div class="dividend-summary" id="bm-summary" style="display:none">
+                        <div><span>加仓日期净值：</span><strong id="bm-nav">--</strong></div>
+                        <div><span>新增份额：</span><strong id="bm-new-shares">--</strong></div>
+                        <div><span>新成本价：</span><strong id="bm-new-cost">--</strong></div>
+                        <div><span>新市值(估算)：</span><strong id="bm-new-value">--</strong></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="bm-btn-cancel">取消</button>
+                        <button type="submit" class="btn btn-primary">确认补仓</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- 分红记录列表模态框 -->
     <div id="modal-dividend-list" class="modal">
         <div class="modal-content" style="max-width:720px">
