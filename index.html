@@ -447,7 +447,12 @@
                     <div class="form-group">
                         <label for="bm-date">加仓日期（按当日净值）</label>
                         <input type="date" id="bm-date" required>
-                        <small class="form-hint">默认当天；非交易日取之前最近交易日净值</small>
+                        <small class="form-hint">默认当天；当天自动取净值，历史日期请手动填写下方净值</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="bm-nav-input">加仓当日单位净值（元）</label>
+                        <input type="number" id="bm-nav-input" step="0.0001" min="0" placeholder="当天自动获取，历史请手填">
+                        <small class="form-hint" id="bm-nav-hint">当天净值由天天基金自动获取（可修改）；历史日期请手动输入加仓当日单位净值</small>
                     </div>
                     <div class="form-group">
                         <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
@@ -456,7 +461,6 @@
                         </label>
                     </div>
                     <div class="dividend-summary" id="bm-summary" style="display:none">
-                        <div><span>加仓日期净值：</span><strong id="bm-nav">--</strong></div>
                         <div><span>新增份额：</span><strong id="bm-new-shares">--</strong></div>
                         <div><span>新成本价：</span><strong id="bm-new-cost">--</strong></div>
                         <div><span>新市值(估算)：</span><strong id="bm-new-value">--</strong></div>
