@@ -10,7 +10,7 @@
     <meta http-equiv="Expires" content="0">
     <link rel="manifest" href="manifest.json">
     <title>个人投资管理系统</title>
-    <link rel="stylesheet" href="css/style.css?v=20260712k">
+    <link rel="stylesheet" href="css/style.css?v=20260718a">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -121,7 +121,6 @@
                         <div class="indicator-name">小旭恐慌指数(XXFI)</div>
                         <div class="indicator-value" id="ind-xxfi-value">--</div>
                         <div class="indicator-change" id="ind-xxfi-signal"></div>
-                        <div class="indicator-date" id="ind-xxfi-date"></div>
                         <div class="indicator-hint">≥75极度恐惧 · 60-75恐惧 · 40-60中性 · 25-40偏贪婪 · &lt;25极度贪婪</div>
                     </div>
                 </div>
@@ -425,55 +424,6 @@
         </div>
     </div>
 
-    <!-- 基金补仓模态框 -->
-    <div id="modal-buymore" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>📈 基金补仓</h2>
-                <button class="modal-close" id="bm-modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="form-buymore">
-                    <input type="hidden" id="bm-asset-id">
-                    <div class="form-group">
-                        <label>基金</label>
-                        <div id="bm-asset-name" style="font-weight:600;margin:4px 0;"></div>
-                    </div>
-                    <div class="form-group">
-                        <label for="bm-amount">加仓金额（<span id="bm-currency">CNY</span>）</label>
-                        <input type="number" id="bm-amount" step="0.01" min="0" placeholder="如：1000" required>
-                        <small class="form-hint">按加仓日期的单位净值计算新增份额（不扣申购费）</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="bm-date">加仓日期（按当日净值）</label>
-                        <input type="date" id="bm-date" required>
-                        <small class="form-hint">默认当天；当天自动取净值，历史日期请手动填写下方净值</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="bm-nav-input">加仓当日单位净值（元）</label>
-                        <input type="number" id="bm-nav-input" step="0.0001" min="0" placeholder="当天自动获取，历史请手填">
-                        <small class="form-hint" id="bm-nav-hint">当天净值由天天基金自动获取（可修改）；历史日期请手动输入加仓当日单位净值</small>
-                    </div>
-                    <div class="form-group">
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
-                            <input type="checkbox" id="bm-deduct-cash" checked>
-                            同步扣减对应币种现金余额
-                        </label>
-                    </div>
-                    <div class="dividend-summary" id="bm-summary" style="display:none">
-                        <div><span>新增份额：</span><strong id="bm-new-shares">--</strong></div>
-                        <div><span>新成本价：</span><strong id="bm-new-cost">--</strong></div>
-                        <div><span>新市值(估算)：</span><strong id="bm-new-value">--</strong></div>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="bm-btn-cancel">取消</button>
-                        <button type="submit" class="btn btn-primary">确认补仓</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <!-- 分红记录列表模态框 -->
     <div id="modal-dividend-list" class="modal">
         <div class="modal-content" style="max-width:720px">
@@ -525,9 +475,9 @@
         </div>
     </div>
 
-    <script src="js/storage.js?v=20260712k"></script>
-    <script src="js/api.js?v=20260712k"></script>
-    <script src="js/ui.js?v=20260712k"></script>
-    <script src="js/app.js?v=20260712k"></script>
+    <script src="js/storage.js?v=20260718a"></script>
+    <script src="js/api.js?v=20260718a"></script>
+    <script src="js/ui.js?v=20260718a"></script>
+    <script src="js/app.js?v=20260718a"></script>
 </body>
 </html>
