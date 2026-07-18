@@ -599,45 +599,45 @@ const APIManager = (function() {
         });
     }
     
-    // 基于 api.fund.eastmoney.com/f10/lsjz + JSONP 的历史净值接口（线路一）
-    async function getEastMoneyFundNav2(code) {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            const timeout = setTimeout(() => {
-                cleanup();
-                reject(new Error(`东方财富基金 ${code} 请求超时`));
-            }, 8000);
-            
-            const cbName = `_emNav_${code}_${Date.now()}`;
-            
-            function cleanup() {
-                clearTimeout(timeout);
-                delete window[cbName];
-                if (script.parentNode) script.parentNode.removeChild(script);
+    async function getEastMoneyFundNav(code) {
+        const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=1&rt=${Date.now()}`;
+        const apidata = await injectScript(url, 'apidata');
+        
+        if (!apidata || !apidata.content) {
+            throw new Error(`东方财富未返回基金 ${code} 数据`);
+        }
+        
+        let nav, navDate, changePercent;
+        const raw = apidata.content;
+        
+        // 1. 尝试HTML表格格式（旧版API）
+        const rowMatch = raw.match(/<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/);
+        if (rowMatch) {
+            nav = parseFloat(rowMatch[2]) || 0;
+            navDate = (rowMatch[1] || '').trim();
+            const changeStr = (rowMatch[4] || '').replace('%', '').trim();
+            changePercent = parseFloat(changeStr) || 0;
+        } else {
+            // 2. 纯文本格式（新版API）：7个表头+7个数据，空格/换行分隔
+            const parts = raw.trim().split(/[\s]+/);
+            // 找第一个日期格式的值作为数据起始点
+            let dataStart = -1;
+            for (let i = 0; i < parts.length; i++) {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(parts[i])) { dataStart = i; break; }
             }
-            
-            window[cbName] = function(data) {
-                cleanup();
-                if (!data || !data.Data || !data.Data.LSJZList || !data.Data.LSJZList.length) {
-                    reject(new Error(`东方财富未返回基金 ${code} 数据`));
-                    return;
-                }
-                const item = data.Data.LSJZList[0];
-                const nav = parseFloat(item.DWJZ) || 0;
-                const navDate = item.FSRQ || '';
-                const changePercent = parseFloat(item.JZZZL) || 0;
-                resolve({
-                    code, name: code,
-                    nav, estimateNav: nav, price: nav, navDate,
-                    changePercent, change: (nav * changePercent / 100),
-                    timestamp: Date.now()
-                });
-            };
-            
-            script.src = `https://api.fund.eastmoney.com/f10/lsjz?callback=${cbName}&fundCode=${code}&pageIndex=1&pageSize=1`;
-            script.onerror = () => { cleanup(); reject(new Error(`东方财富基金 ${code} 加载失败`)); };
-            document.head.appendChild(script);
-        });
+            if (dataStart < 0) throw new Error(`无法解析基金 ${code} 净值`);
+            navDate = parts[dataStart];
+            nav = parseFloat(parts[dataStart + 1]) || 0;
+            const changeStr = (parts[dataStart + 3] || '').replace('%', '').trim();
+            changePercent = parseFloat(changeStr) || 0;
+        }
+        
+        return {
+            code, name: code,
+            nav, estimateNav: nav, price: nav, navDate,
+            changePercent, change: (nav * changePercent / 100),
+            timestamp: Date.now()
+        };
     }
     
     async function getEastMoneyFundName(code) {
@@ -669,11 +669,14 @@ const APIManager = (function() {
                 return await getYahooHKQuote(code);
             }
             case 'fund': {
-                // 线路一（东方财富lsjz JSONP）→ 线路二（天天JSONP直连）→ 线路三（天天via代理）
-                try { return await getEastMoneyFundNav2(code); }
-                catch (e) { console.log('线路一(东财)失败，切线路二(天天直连):', e.message); }
-                try { return await getFundJSONP(code); }
-                catch (e) { console.log('线路二(天天直连)失败，切线路三(代理):', e.message); }
+                if (config.useEastMoneyFund) {
+                    // 路线二：天天基金JSONP直连
+                    try { return await getFundJSONP(code); }
+                    catch (e) { console.log('天天基金失败，回退东方财富:', e.message); }
+                }
+                // 路线一/三：东方财富历史净值
+                try { return await getEastMoneyFundNav(code); }
+                catch (e) { console.log('东方财富失败，回退代理:', e.message); }
                 return await getFundNav(code);
             }
             default: throw new Error(`不支持的资产类型: ${type}`);
@@ -701,7 +704,11 @@ const APIManager = (function() {
                 return h.name || code;
             }
             case 'fund': {
-                try { const f = await getFundJSONP(code); if (f && f.name) return f.name; } catch(e) {}
+                if (config.useEastMoneyFund) {
+                    // 路线二：天天基金
+                    try { const f = await getFundJSONP(code); return f.name || code; } catch(e) {}
+                }
+                // 路线一/三：东方财富
                 try { const n = await getEastMoneyFundName(code); if (n !== code) return n; } catch(e) {}
                 return code;
             }
@@ -772,14 +779,14 @@ const APIManager = (function() {
     function isCacheComplete(data) {
         if (!data || !data.vix) return false;  // VIX必须有（Yahoo不稳定允许缺失）
         // PE至少要有几个核心的
-        const keys = ['csi300Pe', 'sp500Pe', 'xxfi'];
+        const keys = ['csi300Pe', 'sp500Pe'];
         return keys.every(k => data[k] && data[k].value != null);
     }
     
     async function fetchIndicators() {
         const cached = getCachedIndicators();
-        // 缓存仅用于VIX/PE，XXFI/银行五维/秋哥操作每次都实时拉取
-        const result = cached ? { ...cached } : { vix: null, xxfi: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
+        // 缓存仅用于VIX/PE（减少请求）；银行五维/秋哥/XXFI 每次实时拉取，不缓存
+        const result = cached ? { ...cached, xxfi: null } : { vix: null, xxfi: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
         let hasNew = false;
         
         // VIX: Yahoo（仅在缺失或缓存过期时重试）
@@ -817,7 +824,8 @@ const APIManager = (function() {
             } catch (e) { console.warn('蛋卷PE失败:', e.message); }
         }
         
-        // 小旭恐慌指数(XXFI): raw GitHub（每次实时拉取，不缓存）
+        // 小旭恐慌指数(XXFI): raw GitHub（独立获取，不依赖蛋卷）
+        // 实时拉取，不缓存（与 cmb/秋哥一致；跨仓库产物可随时手动重跑，半天缓存会导致旧值卡死）
         {
             try {
                 const xxfiData = await fetchAPI('https://raw.githubusercontent.com/homjanon/xiaoxu-fear/main/output/xxfi_report.json');
@@ -1179,7 +1187,7 @@ const APIManager = (function() {
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
         getFundJSONP, getFundNav,
-        getEastMoneyFundNav2, getEastMoneyFundName,
+        getEastMoneyFundNav, getEastMoneyFundName,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,
