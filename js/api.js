@@ -600,42 +600,51 @@ const APIManager = (function() {
     }
     
     async function getEastMoneyFundNav(code) {
-        const url = `https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=${code}&page=1&per=1&rt=${Date.now()}`;
-        const apidata = await injectScript(url, 'apidata');
-        
-        if (!apidata || !apidata.content) {
-            throw new Error(`东方财富未返回基金 ${code} 数据`);
-        }
-        
-        let nav, navDate, changePercent;
-        const raw = apidata.content;
-        
-        // 1. 尝试HTML表格格式（旧版API）
-        const rowMatch = raw.match(/<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>/);
-        if (rowMatch) {
-            nav = parseFloat(rowMatch[2]) || 0;
-            navDate = (rowMatch[1] || '').trim();
-            const changeStr = (rowMatch[4] || '').replace('%', '').trim();
-            changePercent = parseFloat(changeStr) || 0;
-        } else {
-            // 2. 纯文本格式（新版API）：7个表头+7个数据，空格/换行分隔
-            const parts = raw.trim().split(/[\s]+/);
-            // 找第一个日期格式的值作为数据起始点
-            let dataStart = -1;
-            for (let i = 0; i < parts.length; i++) {
-                if (/^\d{4}-\d{2}-\d{2}$/.test(parts[i])) { dataStart = i; break; }
+        // 东方财富「品种综述」脚本：含基金名称(fS_name)与完整净值历史(Data_netWorthTrend)
+        // 这是 akshare 底层抓取净值的同源接口，浏览器可脚本直连、无需代理/鉴权
+        const url = `https://fund.eastmoney.com/pingzhongdata/${code}.js?rt=${Date.now()}`;
+        const { name, trend } = await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            const timer = setTimeout(() => {
+                cleanup();
+                reject(new Error(`东方财富基金 ${code} 加载超时`));
+            }, 8000);
+            function cleanup() {
+                clearTimeout(timer);
+                if (script.parentNode) script.parentNode.removeChild(script);
             }
-            if (dataStart < 0) throw new Error(`无法解析基金 ${code} 净值`);
-            navDate = parts[dataStart];
-            nav = parseFloat(parts[dataStart + 1]) || 0;
-            const changeStr = (parts[dataStart + 3] || '').replace('%', '').trim();
-            changePercent = parseFloat(changeStr) || 0;
+            script.onload = () => {
+                cleanup();
+                resolve({ name: window.fS_name || code, trend: window.Data_netWorthTrend });
+            };
+            script.onerror = () => {
+                cleanup();
+                reject(new Error(`东方财富基金 ${code} 加载失败`));
+            };
+            script.src = url;
+            document.head.appendChild(script);
+        });
+
+        if (!trend || !trend.length) {
+            throw new Error(`东方财富未返回基金 ${code} 净值数据`);
         }
-        
+
+        const last = trend[trend.length - 1];        // 最新一条单位净值
+        const nav = parseFloat(last.y);
+        if (!isFinite(nav)) throw new Error(`基金 ${code} 净值解析失败`);
+
+        const navDate = last.x ? new Date(last.x).toISOString().slice(0, 10) : '';
+        const changePercent = parseFloat(last.equityReturn) || 0;
+
         return {
-            code, name: code,
-            nav, estimateNav: nav, price: nav, navDate,
-            changePercent, change: (nav * changePercent / 100),
+            code,
+            name,
+            nav,
+            estimateNav: nav,
+            price: nav,
+            navDate,
+            changePercent,
+            change: (nav * changePercent / 100),
             timestamp: Date.now()
         };
     }
@@ -651,6 +660,37 @@ const APIManager = (function() {
         }
     }
     
+    // 自动识别资产类别：6位代码区分 A股/场内ETF 与 场外基金；纯字母→美股；≤5位数字→港股
+    async function identifyAssetType(rawCode) {
+        const code = (rawCode || '').trim().toUpperCase();
+        if (/^[A-Z.]{1,6}$/.test(code)) return 'us-stock';
+        if (/^\d{1,5}$/.test(code)) return 'hk-stock';
+        if (!/^\d{6}$/.test(code)) return 'a-stock';
+
+        // ① 腾讯财经：同时探测 沪(sh)/深(sz)，覆盖 A股与场内ETF（按价格计价）
+        for (const prefix of ['sh', 'sz']) {
+            const tcode = prefix + code;
+            try {
+                const url = `https://qt.gtimg.cn/q=${tcode}&_=${Date.now()}`;
+                let text;
+                try { text = await fetchGBK(url); }
+                catch (e) { if (isCORSError(e)) text = await fetchGBKviaProxy(url); else continue; }
+                if (text && new RegExp(`v_${tcode.replace('.', '\\.')}="([^"]*)"`).test(text)) {
+                    return 'a-stock';
+                }
+            } catch (e) { /* 尝试另一个交易所 */ }
+        }
+
+        // ② 天天基金：场外基金 JSONP 直连（按净值计价）
+        try {
+            const q = await getFundJSONP(code);
+            if (q && q.code) return 'fund';
+        } catch (e) { /* 继续 */ }
+
+        // 都没命中：默认 A股，用户可手动切换为基金
+        return 'a-stock';
+    }
+
     // ==================== 统一接口 ====================
     
     async function getQuote(type, code) {
@@ -1187,7 +1227,7 @@ const APIManager = (function() {
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
         getFundJSONP, getFundNav,
-        getEastMoneyFundNav, getEastMoneyFundName,
+        getEastMoneyFundNav, getEastMoneyFundName, identifyAssetType,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,

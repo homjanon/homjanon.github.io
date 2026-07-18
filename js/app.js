@@ -113,17 +113,38 @@ const App = (function() {
             }
         });
         
-        // 输入代码时自动识别市场
+        // 输入代码时自动识别资产类别（同步判断市场 + 6位代码异步探测 基金/ETF）
+        let _identifyTimer = null;
         document.getElementById('asset-code').addEventListener('input', (e) => {
             const code = e.target.value.trim().toUpperCase();
             const typeSelect = document.getElementById('asset-type');
-            if (/^[A-Z]+$/.test(code)) {
+            const hint = document.getElementById('query-result');
+            // 纯字母 → 美股；1-5位数字 → 港股（无需网络）
+            if (/^[A-Z.]+$/.test(code)) {
                 typeSelect.value = 'us-stock';
-            } else if (/^\d{6}$/.test(code)) {
-                typeSelect.value = 'a-stock';  // 6位数字默认A股，可手动切基金
             } else if (/^\d{1,5}$/.test(code)) {
                 typeSelect.value = 'hk-stock';
+            } else if (/^\d{6}$/.test(code)) {
+                typeSelect.value = 'a-stock'; // 默认，待异步探测后修正
+            } else {
+                return;
             }
+            // 6位数字需联网区分 A股/场内ETF 与 场外基金
+            if (!/^\d{6}$/.test(code)) return;
+            if (hint) hint.textContent = '识别中…';
+            clearTimeout(_identifyTimer);
+            _identifyTimer = setTimeout(async () => {
+                try {
+                    const t = await APIManager.identifyAssetType(code);
+                    // 仅当用户未继续输入时才更新，避免覆盖
+                    if (e.target.value.trim().toUpperCase() === code) {
+                        typeSelect.value = t;
+                        if (hint) hint.textContent = t === 'fund' ? '✓ 已识别为基金' : '✓ 已识别为A股/ETF';
+                    }
+                } catch (err) {
+                    if (hint) hint.textContent = '';
+                }
+            }, 400);
         });
         
         // ===== 分红相关事件 =====
