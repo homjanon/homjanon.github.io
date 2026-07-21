@@ -40,13 +40,14 @@ python -m http.server 8080
 
 ## 数据路由
 
-| 路线 | 勾选 | 股票 | 基金（主源→备用，自动切换） |
+| 线路 | 勾选 | 股票 | 基金（主源→备用，自动切换） |
 |------|------|------|------|
-| **一（默认）** | 路线一 ✓ | 腾讯财经 qt.gtimg.cn | 东方财富 pingzhongdata → 新浪 fu_（需代理） |
+| **一（默认）** | 线路一 ✓ | 腾讯财经 qt.gtimg.cn | 东方财富 pingzhongdata → 新浪 fu_（需代理） |
+| **二** | 线路二 ✓ | 腾讯财经 qt.gtimg.cn | 新浪 fu_（需代理）→ 东方财富 pingzhongdata |
 | **三** | 都不勾 | Finnhub(美股) + 必盈(A股) + Yahoo(港股) | 东方财富 pingzhongdata → 新浪 fu_（需代理） |
 
 > 基金数据：主源东方财富 `pingzhongdata`（浏览器直连、免代理免鉴权）；备用新浪 `fu_`（数据干净，但服务端强制校验 `Referer`，须经「自建带 Referer 的 CORS 代理」转发，详见下方）。天天基金(fundgz.1234567.com.cn)接口已于2026年全面失效(返回404)，已从代码中移除。
-> 路线一免 API Key 开箱即用。路线三需自行申请 Finnhub 和必盈 Key。
+> 线路一/二免 API Key 开箱即用（区别仅在基金数据源：东财 vs 新浪）。线路三需自行申请 Finnhub 和必盈 Key。
 
 ### 场外基金备用源：新浪 fu_（需自建代理）
 
@@ -94,7 +95,7 @@ export default {
 
 ## 设置
 
-### API Key（路线三）
+### API Key（线路三）
 
 | 配置项 | 用途 | 获取方式 |
 |--------|------|---------|
@@ -102,7 +103,7 @@ export default {
 | 必盈 API Licence | A股行情 | [biyingapi.com](https://www.biyingapi.com) |
 | CORS 代理 URL | 港股 + 基金回退 | 默认 corsproxy.io，或自建 Cloudflare Worker |
 
-> 路线一、二无需任何 API Key。
+> 线路一、二无需任何 API Key。
 
 ### 云端备份
 
