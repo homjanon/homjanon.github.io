@@ -5,6 +5,11 @@
 
 const StorageManager = (function() {
     const STORAGE_KEY = 'investment_tracker_data';
+    
+    // 数据变更通知钩子（自动同步用）：落库成功后触发
+    let _dataChangeHook = null;
+    function onDataChanged(cb) { _dataChangeHook = cb; }
+    function notifyDataChanged() { if (_dataChangeHook) { try { _dataChangeHook(); } catch(e) { console.warn('数据变更钩子异常:', e.message); } } }
     const CONFIG_KEY = 'investment_tracker_config';
     const CASH_KEY = 'investment_cash_balance';
     const DIVIDEND_KEY = 'investment_dividends';
@@ -24,6 +29,7 @@ const StorageManager = (function() {
     function saveAssets(assets) {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
+            notifyDataChanged();
             return true;
         } catch (e) {
             console.error('保存资产数据失败:', e);
@@ -116,6 +122,8 @@ const StorageManager = (function() {
             useLine2: false,
             cloudApiKey: '',
             cloudBinId: '',
+            autoSync: false,
+            lastSyncTime: 0,
             categories: ['红利', '纳指100', '标普500']
         };
     }
@@ -140,6 +148,7 @@ const StorageManager = (function() {
     function setCashBalance(balance) {
         try {
             localStorage.setItem(CASH_KEY, JSON.stringify(balance));
+            notifyDataChanged();
             return true;
         } catch (e) { return false; }
     }
@@ -169,6 +178,7 @@ const StorageManager = (function() {
     function saveDividendRecords(records) {
         try {
             localStorage.setItem(DIVIDEND_KEY, JSON.stringify(records));
+            notifyDataChanged();
             return true;
         } catch (e) { return false; }
     }
@@ -211,13 +221,24 @@ const StorageManager = (function() {
         return records.filter(r => r.assetId === assetId);
     }
     
-    // 导出数据
+    // 剥离敏感密钥（上传云端前调用）：深拷贝后清空各类 Key，本地不受影响
+    function stripSecrets(data) {
+        const clone = JSON.parse(JSON.stringify(data));
+        if (clone.config) {
+            clone.config.finnhubKey = '';
+            clone.config.biyingKey = '';
+            clone.config.cloudApiKey = '';
+        }
+        return clone;
+    }
+    
+    // 导出数据（syncTime 用于自动同步时间戳比对）
     function exportData() {
         const assets = getAssets();
         const config = getConfig();
         const cash = getCashBalance();
         const dividends = getDividendRecords();
-        return JSON.stringify({ assets, config, cash, dividends, exportTime: new Date().toISOString() }, null, 2);
+        return JSON.stringify({ assets, config, cash, dividends, syncTime: Date.now(), exportTime: new Date().toISOString() }, null, 2);
     }
     
     // 导入数据
@@ -228,7 +249,13 @@ const StorageManager = (function() {
                 saveAssets(data.assets);
             }
             if (data.config) {
-                saveConfig(data.config);
+                // 云端 config 已剥离密钥，导入时保留本地已有 Key，避免被空值覆盖
+                const local = getConfig();
+                const merged = { ...local, ...data.config };
+                merged.finnhubKey = data.config.finnhubKey || local.finnhubKey || '';
+                merged.biyingKey = data.config.biyingKey || local.biyingKey || '';
+                merged.cloudApiKey = data.config.cloudApiKey || local.cloudApiKey || '';
+                saveConfig(merged);
             }
             if (data.cash) {
                 setCashBalance(data.cash);
@@ -277,6 +304,8 @@ const StorageManager = (function() {
         clearAllData,
         exportData,
         importData,
+        stripSecrets,
+        onDataChanged,
         getHistory,
         addHistorySnapshot,
         // 现金

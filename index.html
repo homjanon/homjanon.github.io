@@ -360,6 +360,13 @@
                         <input type="text" id="config-cloud-binid" placeholder="首次备份成功后自动出现">
                         <small class="form-hint">跨设备导入时粘贴此 ID；同一 Key 下首次备份自动生成</small>
                     </div>
+                    <div class="form-group">
+                        <label style="color:#2563eb;font-weight:600">
+                            <input type="checkbox" id="config-auto-sync">
+                            ☁️ 自动同步（持仓变更后自动上传，打开时检查云端更新）
+                        </label>
+                        <small class="form-hint" style="margin-left:24px">默认关闭。开启前请先填 API Key 并手动备份一次。持仓改动 3 秒后自动上传（已剥离所有 Key）；打开页面若检测到云端更新会询问是否拉取，不会静默覆盖。</small>
+                    </div>
                     <div class="form-actions" style="margin-bottom:12px">
                         <button type="button" class="btn btn-primary" id="btn-cloud-backup">☁️ 备份到云端</button>
                         <button type="button" class="btn btn-success" id="btn-cloud-import">📥 从云端导入</button>

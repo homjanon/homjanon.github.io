@@ -13,6 +13,9 @@ const App = (function() {
         console.log('个人投资管理系统初始化...');
         bindEvents();
         
+        // 注册数据变更钩子（自动同步：持仓/现金/分红改动后自动上传云端）
+        StorageManager.onDataChanged(scheduleAutoUpload);
+        
         // 获取汇率
         try { await APIManager.fetchExchangeRates(); } catch(e) {}
         
@@ -27,6 +30,9 @@ const App = (function() {
         
         // 异步检测新股息（不阻塞页面）
         checkAutoDividends();
+        
+        // 打开时检查云端是否有更新（非阻塞，需确认后才拉取）
+        checkCloudUpdate();
     }
     
     // 绑定事件
@@ -668,6 +674,7 @@ const App = (function() {
         document.getElementById('config-demo-mode').checked = config.demoMode !== false;
         document.getElementById('config-use-line1').checked = config.useLine1 === true;
         document.getElementById('config-use-line2').checked = config.useLine2 === true;
+        document.getElementById('config-auto-sync').checked = config.autoSync === true;
         document.getElementById('config-cloud-apikey').value = config.cloudApiKey || '';
         document.getElementById('config-cloud-binid').value = config.cloudBinId || '';
         
@@ -885,9 +892,10 @@ const App = (function() {
         const useLine2 = document.getElementById('config-use-line2').checked;
         const cloudApiKey = document.getElementById('config-cloud-apikey').value.trim();
         const cloudBinId = document.getElementById('config-cloud-binid').value.trim();
+        const autoSync = document.getElementById('config-auto-sync').checked;
         
         const existing = StorageManager.getConfig();
-        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useLine1, useLine2, cloudApiKey, cloudBinId };
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useLine1, useLine2, cloudApiKey, cloudBinId, autoSync };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
@@ -942,12 +950,14 @@ const App = (function() {
         btn.disabled = true; btn.textContent = '备份中...';
         
         try {
-            const data = JSON.parse(StorageManager.exportData());
+            const raw = JSON.parse(StorageManager.exportData());
+            const data = StorageManager.stripSecrets(raw);   // 上传前剥离 Key（本地不受影响）
             const binId = await APIManager.cloudBackup(data, apiKey);
             
             const config = StorageManager.getConfig();
             config.cloudBinId = binId;
             config.cloudApiKey = apiKey;
+            config.lastSyncTime = raw.syncTime;   // 记录本次同步时间，避免下次误判云端更新
             StorageManager.saveConfig(config);
             
             document.getElementById('config-cloud-binid').value = binId;
@@ -978,6 +988,7 @@ const App = (function() {
                 btn.disabled = false; btn.textContent = '📥 从云端导入';
                 return;
             }
+            _suppressAutoSync = true;   // 导入期间抑制自动上传，防回环
             StorageManager.clearAllData();
             let success = false;
             try {
@@ -986,7 +997,12 @@ const App = (function() {
                 console.warn('JSON序列化异常，尝试直接导入:', e.message);
                 success = StorageManager.importData(JSON.stringify({ assets: data.assets, config: data.config }));
             }
+            _suppressAutoSync = false;
             if (success) {
+                // 对齐本次同步时间，避免打开时重复弹"云端有更新"
+                const c = StorageManager.getConfig();
+                c.lastSyncTime = data.syncTime || Date.now();
+                StorageManager.saveConfig(c);
                 UIManager.showToast(`导入成功：${data.assets.length} 个资产`, 'success');
                 render();
             } else {
@@ -997,6 +1013,74 @@ const App = (function() {
             UIManager.showToast(`导入失败: ${e.message}`, 'error');
         }
         btn.disabled = false; btn.textContent = '📥 从云端导入';
+    }
+    
+    // ==================== 自动同步（#1） ====================
+    // 说明：仅同步持仓数据（assets/cash/dividends），上传前剥离所有 Key；
+    // 拉取需用户确认，不静默覆盖；默认关闭，须在设置中开启且已配 Key。
+    
+    let _autoUploadTimer = null;      // debounce 定时器
+    let _suppressAutoSync = false;    // 拉取/导入期间抑制自动上传，防回环
+    
+    // 数据变更后触发：debounce 3 秒合并上传一次
+    function scheduleAutoUpload() {
+        if (_suppressAutoSync) return;
+        const config = StorageManager.getConfig();
+        if (!config.autoSync || !config.cloudApiKey) return;  // 未开启或未配 Key 直接跳过
+        if (_autoUploadTimer) clearTimeout(_autoUploadTimer);
+        _autoUploadTimer = setTimeout(doAutoUpload, 3000);
+    }
+    
+    // 执行自动上传（复用 cloudBackup，上传前剥离密钥）
+    async function doAutoUpload() {
+        const config = StorageManager.getConfig();
+        if (!config.autoSync || !config.cloudApiKey) return;
+        try {
+            const raw = JSON.parse(StorageManager.exportData());
+            const safe = StorageManager.stripSecrets(raw);   // 剥离 Key
+            const binId = await APIManager.cloudBackup(safe, config.cloudApiKey);
+            // 回填 binId + 记录本次同步时间（对齐云端 syncTime，避免下次误判云端更新）
+            const c = StorageManager.getConfig();
+            c.cloudBinId = binId;
+            c.lastSyncTime = raw.syncTime;
+            StorageManager.saveConfig(c);
+            UIManager.showToast('☁️ 已自动同步到云端', 'success');
+        } catch (e) {
+            console.warn('自动同步失败:', e.message);
+            UIManager.showToast(`自动同步失败: ${e.message}`, 'error');
+        }
+    }
+    
+    // 打开页面时检查云端是否更新（比对 syncTime，需确认后拉取）
+    async function checkCloudUpdate() {
+        const config = StorageManager.getConfig();
+        if (!config.autoSync || !config.cloudApiKey || !config.cloudBinId) return;
+        try {
+            const data = await APIManager.cloudFetch(config.cloudApiKey, config.cloudBinId);
+            if (!data || !data.assets || !Array.isArray(data.assets)) return;
+            const remoteTime = data.syncTime || 0;
+            const localTime = config.lastSyncTime || 0;
+            if (remoteTime <= localTime) return;  // 云端不比本地新，无需处理
+            
+            const when = new Date(remoteTime).toLocaleString('zh-CN');
+            if (!confirm(`云端有更新（${data.assets.length} 个资产，同步于 ${when}）。\n是否拉取并覆盖本地当前数据？`)) return;
+            
+            _suppressAutoSync = true;  // 拉取期间不触发自动上传
+            try {
+                StorageManager.clearAllData();
+                StorageManager.importData(JSON.stringify(data));  // config 会保留本地 Key
+                const c = StorageManager.getConfig();
+                c.lastSyncTime = remoteTime;  // 对齐云端时间
+                StorageManager.saveConfig(c);
+                render();
+                try { await UIManager.renderIndicators(); } catch(e) {}
+                UIManager.showToast('☁️ 已从云端拉取最新数据', 'success');
+            } finally {
+                _suppressAutoSync = false;
+            }
+        } catch (e) {
+            console.warn('检查云端更新失败:', e.message);
+        }
     }
     
     // 公开API (供HTML onclick调用)
