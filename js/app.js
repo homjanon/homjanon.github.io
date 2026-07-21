@@ -666,7 +666,8 @@ const App = (function() {
         document.getElementById('config-biying-key').value = config.biyingKey || '';
         document.getElementById('config-cors-proxy').value = config.corsProxy || '';
         document.getElementById('config-demo-mode').checked = config.demoMode !== false;
-        document.getElementById('config-use-tencent').checked = config.useTencent === true;
+        document.getElementById('config-use-line1').checked = config.useLine1 === true;
+        document.getElementById('config-use-line2').checked = config.useLine2 === true;
         document.getElementById('config-cloud-apikey').value = config.cloudApiKey || '';
         document.getElementById('config-cloud-binid').value = config.cloudBinId || '';
         
@@ -880,14 +881,13 @@ const App = (function() {
         const biyingKey = document.getElementById('config-biying-key').value.trim();
         const corsProxy = document.getElementById('config-cors-proxy').value.trim();
         const demoMode = document.getElementById('config-demo-mode').checked;
-        const useTencent = document.getElementById('config-use-tencent').checked;
-        
-        const finalUseTencent = document.getElementById('config-use-tencent').checked;
+        const useLine1 = document.getElementById('config-use-line1').checked;
+        const useLine2 = document.getElementById('config-use-line2').checked;
         const cloudApiKey = document.getElementById('config-cloud-apikey').value.trim();
         const cloudBinId = document.getElementById('config-cloud-binid').value.trim();
         
         const existing = StorageManager.getConfig();
-        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent: finalUseTencent, cloudApiKey, cloudBinId };
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useLine1, useLine2, cloudApiKey, cloudBinId };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
