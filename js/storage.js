@@ -109,7 +109,8 @@ const StorageManager = (function() {
             biyingKey: '',
             corsProxy: 'https://corsproxy.io/?',
             demoMode: false,
-            useTencent: true,
+            useLine1: true,
+            useLine2: false,
             cloudApiKey: '',
             cloudBinId: '',
             categories: ['红利', '纳指100', '标普500']
