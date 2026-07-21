@@ -325,13 +325,20 @@
                     </div>
                     <div class="form-group">
                         <label style="color:#2563eb;font-weight:600">
-                            <input type="checkbox" id="config-use-tencent" checked> 
-                            路线一：腾讯财经 + 东方财富（默认，免Key直连）
+                            <input type="checkbox" id="config-use-line1" checked> 
+                            线路一：腾讯财经 + 东方财富（默认，免Key直连）
                         </label>
                         <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：东方财富pingzhongdata(主) + 新浪fu_(备,需CORS代理)</small>
                     </div>
+                    <div class="form-group">
+                        <label style="color:#2563eb;font-weight:600">
+                            <input type="checkbox" id="config-use-line2"> 
+                            线路二：腾讯财经 + 新浪fu_（需配置支持 Referer 的 CORS 代理）
+                        </label>
+                        <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：新浪fu_(主) + 东方财富(备)；新浪需自建代理（见下方说明）</small>
+                    </div>
                     <div class="form-group" style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:8px">
-                        <small style="color:#94a3b8">-- 路线三：取消上方勾选，启用 API Key 模式（需自行申请）--</small>
+                        <small style="color:#94a3b8">-- 线路三：同时取消线路一、二，启用 API Key 模式（Finnhub/必盈/Yahoo，需自行申请 Key）--</small>
                     </div>
                     
                     <div class="form-group">
