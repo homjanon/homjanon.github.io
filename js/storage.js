@@ -84,7 +84,10 @@ const StorageManager = (function() {
     function getConfig() {
         try {
             const data = localStorage.getItem(CONFIG_KEY);
-            return data ? JSON.parse(data) : getDefaultConfig();
+            if (!data) return getDefaultConfig();
+            const parsed = JSON.parse(data);
+            // 合并默认配置，补全新增字段（如 useLine1/useLine2），保证旧配置向后兼容
+            return { ...getDefaultConfig(), ...parsed };
         } catch (e) {
             console.error('读取配置失败:', e);
             return getDefaultConfig();
