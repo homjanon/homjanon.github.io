@@ -479,7 +479,7 @@ const APIManager = (function() {
         return code;
     }
     
-    // ==================== 基金 (东方财富 pingzhongdata 主源 + 新浪 fu_ 备用) ====================
+    // ==================== 基金 (东方财富 pingzhongdata 主源 + 蛋卷 djapi 备用) ====================
     // 注：天天基金(fundgz.1234567.com.cn)接口已于2026年失效(返回404)，相关代码已移除。
     
     // 注入 <script> 并读取全局变量（无需代理、无需 CORS）
@@ -578,48 +578,53 @@ const APIManager = (function() {
         }
     }
 
-    // ==================== 基金备用：新浪 fu_（需支持 Referer 的 CORS 代理） ====================
-    // 新浪 hq.sinajs.cn 必须带 Referer: https://finance.sina.com.cn，浏览器直连/公共代理均被拒，
-    // 须经「自建带 Referer 的代理」(如 Cloudflare Worker，见 README) 转发。响应为 GB18030 编码。
-    async function getSinaFundNav(code) {
-        const url = `https://hq.sinajs.cn/list=fu_${code}`;
+    // ==================== 基金备用：蛋卷 djapi（经通用 CORS 代理） ====================
+    // 蛋卷 danjuanfunds.com/djapi/fund/{code} 免登录/免 Referer，返回 UTF-8 干净 JSON（含名称/单位净值/日期/日涨幅）。
+    // 但响应无 CORS 头，须经「通用 CORS 代理」(如 Cloudflare Worker，见 README) 转发。
+    // 实测：源端 ~0.2s，覆盖全（含东财/新浪查不到的基金），数据质量优于新浪 fu_。
+    async function getDanjuanFundNav(code) {
+        const url = `https://danjuanfunds.com/djapi/fund/${code}`;
         const proxies = getProxyList();
-        let raw = null;
+        let data = null;
         for (const proxy of proxies) {
             try {
                 const r = await fetch(proxyURL(proxy, url));
                 if (!r.ok) continue;
-                const buf = await r.arrayBuffer();
-                raw = new TextDecoder('gb18030').decode(buf);
-                break;
+                const json = await r.json();
+                if (json && json.data && json.data.fund_derived) { data = json.data; break; }
             } catch (e) {
-                console.warn(`新浪基金代理 ${proxy.substring(0, 40)} 失败:`, e.message);
+                console.warn(`蛋卷基金代理 ${proxy.substring(0, 40)} 失败:`, e.message);
             }
         }
-        if (!raw) throw new Error(`新浪基金代理全部失败（请在设置中配置支持 Referer 的代理）`);
+        if (!data) throw new Error(`蛋卷基金代理全部失败（请在设置中配置 CORS 代理）`);
 
-        const m = raw.match(new RegExp(`hq_str_fu_${code}="([^"]*)"`));
-        if (!m) throw new Error(`新浪基金 ${code} 数据解析失败`);
-
-        // 字段: 名称[0]/时间[1]/今开[2]/昨收[3]/累计净值[4]/涨跌额[5]/涨跌幅[6]/日期[7]/单位净值[8]/日增长率[9]
-        const f = m[1].split(',');
-        const nav = parseFloat(f[8]);
-        if (!isFinite(nav) || !f[7]) throw new Error(`新浪基金 ${code} 无净值数据`);
-        const navDate = f[7];
-        const changePercent = parseFloat(f[9]) || 0;
+        const fd = data.fund_derived;
+        const nav = parseFloat(fd.unit_nav);
+        if (!isFinite(nav)) throw new Error(`蛋卷基金 ${code} 净值解析失败`);
+        const navDate = fd.end_date || '';
+        const changePercent = parseFloat(fd.nav_grtd) || 0;
 
         return {
-            code, name: f[0] || code,
+            code, name: data.fd_name || code,
             nav, estimateNav: nav, price: nav, navDate,
             changePercent, change: nav * changePercent / 100,
             timestamp: Date.now()
         };
     }
 
-    async function getSinaFundName(code) {
+    async function getDanjuanFundName(code) {
         try {
-            const q = await getSinaFundNav(code);
-            return q && q.name && q.name !== code ? q.name : code;
+            const url = `https://danjuanfunds.com/djapi/fund/${code}`;
+            const proxies = getProxyList();
+            for (const proxy of proxies) {
+                try {
+                    const r = await fetch(proxyURL(proxy, url));
+                    if (!r.ok) continue;
+                    const json = await r.json();
+                    if (json && json.data && json.data.fd_name) return json.data.fd_name;
+                } catch (e) { /* 尝试下一个代理 */ }
+            }
+            return code;
         } catch (e) {
             return code;
         }
@@ -665,7 +670,7 @@ const APIManager = (function() {
             return getDemoQuote(type, code);
         }
         
-        // 线路一(腾讯+东财)/线路二(腾讯+新浪)：股票均走腾讯财经直连
+        // 线路一/线路二(腾讯+东财/蛋卷)：股票均走腾讯财经直连
         // 线路三(API Key模式)：两框均未勾选，走 Finnhub/必盈/Yahoo
         const useTencent = !!(config.useLine1 || config.useLine2);
 
@@ -678,19 +683,12 @@ const APIManager = (function() {
                 return await getYahooHKQuote(code);
             }
             case 'fund': {
-                // 线路二：新浪 fu_(主) + 东方财富 pingzhongdata(备)
-                if (config.useLine2) {
-                    try { return await getSinaFundNav(code); }
-                    catch (e) { console.log('新浪基金失败，尝试东方财富:', e.message); }
-                    try { return await getEastMoneyFundNav(code); }
-                    catch (e) { console.log('东方财富基金失败:', e.message); }
-                    throw new Error(`基金 ${code} 所有数据源均失败`);
-                }
-                // 线路一/线路三：东方财富 pingzhongdata(主) + 新浪 fu_(备,需CORS代理)
+                // 主源：东方财富 pingzhongdata（浏览器直连，免代理）
                 try { return await getEastMoneyFundNav(code); }
-                catch (e) { console.log('东方财富失败，尝试新浪:', e.message); }
-                try { return await getSinaFundNav(code); }
-                catch (e) { console.log('新浪基金失败:', e.message); }
+                catch (e) { console.log('东方财富失败，尝试蛋卷:', e.message); }
+                // 备用：蛋卷 djapi（经 CORS 代理，免 Referer、UTF-8 干净 JSON）
+                try { return await getDanjuanFundNav(code); }
+                catch (e) { console.log('蛋卷基金失败:', e.message); }
                 throw new Error(`基金 ${code} 所有数据源均失败`);
             }
             default: throw new Error(`不支持的资产类型: ${type}`);
@@ -720,15 +718,10 @@ const APIManager = (function() {
                 return h.name || code;
             }
             case 'fund': {
-                // 线路二：新浪 fu_(主) + 东方财富 pingzhongdata(备)
-                if (config.useLine2) {
-                    try { const s = await getSinaFundName(code); if (s && s !== code) return s; } catch(e) {}
-                    try { const n = await getEastMoneyFundName(code); if (n && n !== code) return n; } catch(e) {}
-                    return code;
-                }
-                // 线路一/线路三：东方财富 pingzhongdata(主) + 新浪 fu_(备)
+                // 主源：东方财富 pingzhongdata
                 try { const n = await getEastMoneyFundName(code); if (n && n !== code) return n; } catch(e) {}
-                try { const s = await getSinaFundName(code); if (s && s !== code) return s; } catch(e) {}
+                // 备用：蛋卷 djapi
+                try { const d = await getDanjuanFundName(code); if (d && d !== code) return d; } catch(e) {}
                 return code;
             }
             default: return code;
@@ -1205,7 +1198,7 @@ const APIManager = (function() {
         getBiyingHKStockQuote, getBiyingHKStockName,
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
-        getEastMoneyFundNav, getEastMoneyFundName, getSinaFundNav, getSinaFundName, identifyAssetType,
+        getEastMoneyFundNav, getEastMoneyFundName, getDanjuanFundNav, getDanjuanFundName, identifyAssetType,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,
