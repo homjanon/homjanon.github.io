@@ -665,19 +665,30 @@ const APIManager = (function() {
             return getDemoQuote(type, code);
         }
         
+        // 线路一(腾讯+东财)/线路二(腾讯+新浪)：股票均走腾讯财经直连
+        // 线路三(API Key模式)：两框均未勾选，走 Finnhub/必盈/Yahoo
+        const useTencent = !!(config.useLine1 || config.useLine2);
+
         switch (type) {
-            case 'us-stock': return config.useTencent ? await getTencentQuote(type, code) : await getFinnhubQuote(code);
-            case 'a-stock': return config.useTencent ? await getTencentQuote(type, code) : await getBiyingAStockQuote(code);
+            case 'us-stock': return useTencent ? await getTencentQuote(type, code) : await getFinnhubQuote(code);
+            case 'a-stock': return useTencent ? await getTencentQuote(type, code) : await getBiyingAStockQuote(code);
             case 'hk-stock': {
-                if (config.useTencent) return await getTencentQuote(type, code);
+                if (useTencent) return await getTencentQuote(type, code);
                 // 港股通过Yahoo Finance + 代理
                 return await getYahooHKQuote(code);
             }
             case 'fund': {
-                // 主源：东方财富 pingzhongdata（浏览器直连，免代理/鉴权）
+                // 线路二：新浪 fu_(主) + 东方财富 pingzhongdata(备)
+                if (config.useLine2) {
+                    try { return await getSinaFundNav(code); }
+                    catch (e) { console.log('新浪基金失败，尝试东方财富:', e.message); }
+                    try { return await getEastMoneyFundNav(code); }
+                    catch (e) { console.log('东方财富基金失败:', e.message); }
+                    throw new Error(`基金 ${code} 所有数据源均失败`);
+                }
+                // 线路一/线路三：东方财富 pingzhongdata(主) + 新浪 fu_(备,需CORS代理)
                 try { return await getEastMoneyFundNav(code); }
                 catch (e) { console.log('东方财富失败，尝试新浪:', e.message); }
-                // 备用：新浪基金 fu_（需配置支持 Referer 的 CORS 代理，详见 README）
                 try { return await getSinaFundNav(code); }
                 catch (e) { console.log('新浪基金失败:', e.message); }
                 throw new Error(`基金 ${code} 所有数据源均失败`);
@@ -689,27 +700,34 @@ const APIManager = (function() {
     async function getName(type, code) {
         const config = getConfig();
         if (config.demoMode) return getDemoName(type, code);
-        
+
+        const useTencent = !!(config.useLine1 || config.useLine2);
+
         switch (type) {
             case 'us-stock': {
-                if (config.useTencent) return await getTencentName(type, code);
+                if (useTencent) return await getTencentName(type, code);
                 const p = await getFinnhubCompanyProfile(code);
                 return p.name || code.toUpperCase();
             }
             case 'a-stock': {
-                if (config.useTencent) return await getTencentName(type, code);
+                if (useTencent) return await getTencentName(type, code);
                 const s = await getBiyingAStockName(code);
                 return s.name || code;
             }
             case 'hk-stock': {
-                if (config.useTencent) return await getTencentName(type, code);
+                if (useTencent) return await getTencentName(type, code);
                 const h = await getYahooHKName(code);
                 return h.name || code;
             }
             case 'fund': {
-                // 主源：东方财富 pingzhongdata
+                // 线路二：新浪 fu_(主) + 东方财富 pingzhongdata(备)
+                if (config.useLine2) {
+                    try { const s = await getSinaFundName(code); if (s && s !== code) return s; } catch(e) {}
+                    try { const n = await getEastMoneyFundName(code); if (n && n !== code) return n; } catch(e) {}
+                    return code;
+                }
+                // 线路一/线路三：东方财富 pingzhongdata(主) + 新浪 fu_(备)
                 try { const n = await getEastMoneyFundName(code); if (n && n !== code) return n; } catch(e) {}
-                // 备用：新浪基金 fu_
                 try { const s = await getSinaFundName(code); if (s && s !== code) return s; } catch(e) {}
                 return code;
             }
