@@ -321,21 +321,21 @@
                         <datalist id="proxy-list">
                             <option value="https://corsproxy.io/?">
                         </datalist>
-                        <small class="form-hint">默认 corsproxy.io；填入自建 Cloudflare Worker 地址可启用新浪基金备用源（见 README）</small>
+                        <small class="form-hint">默认 corsproxy.io；填入自建 Cloudflare Worker 地址可启用蛋卷基金备用源（见 README）</small>
                     </div>
                     <div class="form-group">
                         <label style="color:#2563eb;font-weight:600">
                             <input type="checkbox" id="config-use-line1" checked> 
                             线路一：腾讯财经 + 东方财富（默认，免Key直连）
                         </label>
-                        <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：东方财富pingzhongdata(主) + 新浪fu_(备,需CORS代理)</small>
+                        <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：东方财富pingzhongdata(主) + 蛋卷djapi(备,需CORS代理)</small>
                     </div>
                     <div class="form-group">
                         <label style="color:#2563eb;font-weight:600">
                             <input type="checkbox" id="config-use-line2"> 
-                            线路二：腾讯财经 + 新浪fu_（需配置支持 Referer 的 CORS 代理）
+                            线路二：腾讯财经 + 蛋卷djapi（需配置 CORS 代理）
                         </label>
-                        <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：新浪fu_(主) + 东方财富(备)；新浪需自建代理（见下方说明）</small>
+                        <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：东方财富(主) + 蛋卷(备,需CORS代理)；蛋卷需部署代理（见下方说明）</small>
                     </div>
                     <div class="form-group" style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:8px">
                         <small style="color:#94a3b8">-- 线路三：同时取消线路一、二，启用 API Key 模式（Finnhub/必盈/Yahoo，需自行申请 Key）--</small>
