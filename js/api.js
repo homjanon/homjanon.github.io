@@ -479,90 +479,8 @@ const APIManager = (function() {
         return code;
     }
     
-    // ==================== 基金 (天天基金网 → CORS代理) ====================
-    
-    // 基金JSONP直连（无需代理）
-    // 天天基金 JSONP 固定回调名为 jsonpgz，不能用自定义名称
-    function getFundJSONP(code) {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            const timeout = setTimeout(() => {
-                cleanup();
-                reject(new Error(`基金 ${code} 请求超时`));
-            }, 8000);
-            
-            const previous = window.jsonpgz;
-            const cleanup = () => {
-                clearTimeout(timeout);
-                window.jsonpgz = previous;
-                if (script.parentNode) script.parentNode.removeChild(script);
-            };
-            
-            window.jsonpgz = function(data) {
-                cleanup();
-                if (!data || !data.fundcode) {
-                    reject(new Error(`未找到基金 ${code}`));
-                    return;
-                }
-                const nav = parseFloat(data.dwjz) || 0;
-                const gszVal = parseFloat(data.gsz);
-                const estNav = gszVal > 0 ? gszVal : nav;
-                const changePct = parseFloat(data.gszzl) || 0;
-                // 日期：有实时估值时用估值时间，否则用结算日期
-                const navDate = gszVal > 0 ? (data.gztime || data.jzrq || '') : (data.jzrq || '');
-                resolve({
-                    code: data.fundcode, name: data.name || code,
-                    nav, estimateNav: estNav, navDate,
-                    change: estNav - nav,
-                    changePercent: changePct,
-                    timestamp: Date.now(), price: estNav
-                });
-            };
-            
-            script.src = `https://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
-            script.onerror = () => { cleanup(); reject(new Error(`基金 ${code} 加载失败`)); };
-            document.head.appendChild(script);
-        });
-    }
-    
-    // 基金走代理（备用）
-    async function getFundNav(code) {
-        // 天天基金网仅支持HTTP，HTTPS页面会Mixed Content拦截，必须走代理
-        const url = `http://fundgz.1234567.com.cn/js/${code}.js?rt=${Date.now()}`;
-        const text = await fetchTextViaProxy(url);
-        
-        if (!text || text.trim() === '') {
-            throw new Error(`未找到基金 ${code}，请检查代码（6位数字，如110022）`);
-        }
-        
-        // 解析 JSONP: jsonpgz({...});
-        let data = null;
-        const m = text.match(/jsonpgz\s*\(\s*(\{[\s\S]*?\})\s*\)/);
-        if (m) { try { data = JSON.parse(m[1]); } catch(e) {} }
-        if (!data) { try { data = JSON.parse(text); } catch(e) {} }
-        
-        if (!data || !data.fundcode) {
-            throw new Error(`无法解析基金 ${code} 的数据`);
-        }
-        
-        const nav = parseFloat(data.dwjz) || 0;
-        const gszVal = parseFloat(data.gsz);
-        const estNav = gszVal > 0 ? gszVal : nav;
-        const navDate = gszVal > 0 ? (data.gztime || data.jzrq || '') : (data.jzrq || '');
-        
-        return {
-            code: data.fundcode,
-            name: data.name || code,
-            nav, estimateNav: estNav || nav,
-            change: estNav - nav,
-            navDate,
-            changePercent: parseFloat(data.gszzl) || 0,
-            timestamp: Date.now(),
-            price: estNav || nav
-        };
-    }
-    
-    // ==================== 基金 (东方财富历史净值，天天基金备选) ====================
+    // ==================== 基金 (东方财富 pingzhongdata 主源 + 新浪 fu_ 备用) ====================
+    // 注：天天基金(fundgz.1234567.com.cn)接口已于2026年失效(返回404)，相关代码已移除。
     
     // 注入 <script> 并读取全局变量（无需代理、无需 CORS）
     function injectScript(url, varName, timeoutMs = 8000) {
@@ -659,7 +577,54 @@ const APIManager = (function() {
             return code;
         }
     }
-    
+
+    // ==================== 基金备用：新浪 fu_（需支持 Referer 的 CORS 代理） ====================
+    // 新浪 hq.sinajs.cn 必须带 Referer: https://finance.sina.com.cn，浏览器直连/公共代理均被拒，
+    // 须经「自建带 Referer 的代理」(如 Cloudflare Worker，见 README) 转发。响应为 GB18030 编码。
+    async function getSinaFundNav(code) {
+        const url = `https://hq.sinajs.cn/list=fu_${code}`;
+        const proxies = getProxyList();
+        let raw = null;
+        for (const proxy of proxies) {
+            try {
+                const r = await fetch(proxyURL(proxy, url));
+                if (!r.ok) continue;
+                const buf = await r.arrayBuffer();
+                raw = new TextDecoder('gb18030').decode(buf);
+                break;
+            } catch (e) {
+                console.warn(`新浪基金代理 ${proxy.substring(0, 40)} 失败:`, e.message);
+            }
+        }
+        if (!raw) throw new Error(`新浪基金代理全部失败（请在设置中配置支持 Referer 的代理）`);
+
+        const m = raw.match(new RegExp(`hq_str_fu_${code}="([^"]*)"`));
+        if (!m) throw new Error(`新浪基金 ${code} 数据解析失败`);
+
+        // 字段: 名称[0]/时间[1]/今开[2]/昨收[3]/累计净值[4]/涨跌额[5]/涨跌幅[6]/日期[7]/单位净值[8]/日增长率[9]
+        const f = m[1].split(',');
+        const nav = parseFloat(f[8]);
+        if (!isFinite(nav) || !f[7]) throw new Error(`新浪基金 ${code} 无净值数据`);
+        const navDate = f[7];
+        const changePercent = parseFloat(f[9]) || 0;
+
+        return {
+            code, name: f[0] || code,
+            nav, estimateNav: nav, price: nav, navDate,
+            changePercent, change: nav * changePercent / 100,
+            timestamp: Date.now()
+        };
+    }
+
+    async function getSinaFundName(code) {
+        try {
+            const q = await getSinaFundNav(code);
+            return q && q.name && q.name !== code ? q.name : code;
+        } catch (e) {
+            return code;
+        }
+    }
+
     // 自动识别资产类别：6位代码区分 A股/场内ETF 与 场外基金；纯字母→美股；≤5位数字→港股
     async function identifyAssetType(rawCode) {
         const code = (rawCode || '').trim().toUpperCase();
@@ -681,10 +646,10 @@ const APIManager = (function() {
             } catch (e) { /* 尝试另一个交易所 */ }
         }
 
-        // ② 天天基金：场外基金 JSONP 直连（按净值计价）
+        // ② 东方财富：场外基金探测（按净值计价）
         try {
-            const q = await getFundJSONP(code);
-            if (q && q.code) return 'fund';
+            const name = await getEastMoneyFundName(code);
+            if (name && name !== code) return 'fund';
         } catch (e) { /* 继续 */ }
 
         // 都没命中：默认 A股，用户可手动切换为基金
@@ -709,15 +674,13 @@ const APIManager = (function() {
                 return await getYahooHKQuote(code);
             }
             case 'fund': {
-                if (config.useEastMoneyFund) {
-                    // 路线二：天天基金JSONP直连
-                    try { return await getFundJSONP(code); }
-                    catch (e) { console.log('天天基金失败，回退东方财富:', e.message); }
-                }
-                // 路线一/三：东方财富历史净值
+                // 主源：东方财富 pingzhongdata（浏览器直连，免代理/鉴权）
                 try { return await getEastMoneyFundNav(code); }
-                catch (e) { console.log('东方财富失败，回退代理:', e.message); }
-                return await getFundNav(code);
+                catch (e) { console.log('东方财富失败，尝试新浪:', e.message); }
+                // 备用：新浪基金 fu_（需配置支持 Referer 的 CORS 代理，详见 README）
+                try { return await getSinaFundNav(code); }
+                catch (e) { console.log('新浪基金失败:', e.message); }
+                throw new Error(`基金 ${code} 所有数据源均失败`);
             }
             default: throw new Error(`不支持的资产类型: ${type}`);
         }
@@ -744,12 +707,10 @@ const APIManager = (function() {
                 return h.name || code;
             }
             case 'fund': {
-                if (config.useEastMoneyFund) {
-                    // 路线二：天天基金
-                    try { const f = await getFundJSONP(code); return f.name || code; } catch(e) {}
-                }
-                // 路线一/三：东方财富
-                try { const n = await getEastMoneyFundName(code); if (n !== code) return n; } catch(e) {}
+                // 主源：东方财富 pingzhongdata
+                try { const n = await getEastMoneyFundName(code); if (n && n !== code) return n; } catch(e) {}
+                // 备用：新浪基金 fu_
+                try { const s = await getSinaFundName(code); if (s && s !== code) return s; } catch(e) {}
                 return code;
             }
             default: return code;
@@ -1226,8 +1187,7 @@ const APIManager = (function() {
         getBiyingHKStockQuote, getBiyingHKStockName,
         getYahooHKQuote, getYahooHKName,
         getTencentQuote, getTencentName,
-        getFundJSONP, getFundNav,
-        getEastMoneyFundNav, getEastMoneyFundName, identifyAssetType,
+        getEastMoneyFundNav, getEastMoneyFundName, getSinaFundNav, getSinaFundName, identifyAssetType,
         getQuote, getName, updateAllPrices,
         fetchExchangeRates, getExchangeRates, toCNY,
         getCurrencySymbol, getAssetCurrency,

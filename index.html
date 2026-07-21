@@ -321,21 +321,14 @@
                         <datalist id="proxy-list">
                             <option value="https://corsproxy.io/?">
                         </datalist>
-                        <small class="form-hint">默认 corsproxy.io；也可填入自建 Cloudflare Worker 地址</small>
+                        <small class="form-hint">默认 corsproxy.io；填入自建 Cloudflare Worker 地址可启用新浪基金备用源（见 README）</small>
                     </div>
                     <div class="form-group">
                         <label style="color:#2563eb;font-weight:600">
                             <input type="checkbox" id="config-use-tencent" checked> 
                             路线一：腾讯财经 + 东方财富（默认，免Key直连）
                         </label>
-                        <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：东方财富历史净值（覆盖全基金）</small>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="config-use-eastmoney-fund"> 
-                            路线二：腾讯财经 + 天天基金（免Key直连）
-                        </label>
-                        <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：天天基金JSONP实时估值（路线一保持勾选）</small>
+                        <small class="form-hint" style="margin-left:24px">股票：腾讯直连 ｜ 基金：东方财富pingzhongdata(主) + 新浪fu_(备,需CORS代理)</small>
                     </div>
                     <div class="form-group" style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:8px">
                         <small style="color:#94a3b8">-- 路线三：取消上方勾选，启用 API Key 模式（需自行申请）--</small>
@@ -452,7 +445,7 @@
                     <div class="form-group">
                         <label for="bm-nav-input">加仓当日单位净值（元）</label>
                         <input type="number" id="bm-nav-input" step="0.0001" min="0" placeholder="当天自动获取，历史请手填">
-                        <small class="form-hint" id="bm-nav-hint">当天净值由天天基金自动获取（可修改）；历史日期请手动输入加仓当日单位净值</small>
+                        <small class="form-hint" id="bm-nav-hint">当天净值由东方财富自动获取（可修改）；历史日期请手动输入加仓当日单位净值</small>
                     </div>
                     <div class="form-group">
                         <label style="display:flex;align-items:center;gap:6px;font-weight:400;">

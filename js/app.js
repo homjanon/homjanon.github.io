@@ -476,10 +476,10 @@ const App = (function() {
         if (!asset || !date) { calcBuyMoreSummary(); return; }
 
         if (date === getTodayStr()) {
-            // 当天：自动拉取最新单位净值（天天基金 JSONP，无需代理）
-            navHint.textContent = '当天净值由天天基金自动获取（可修改）';
+            // 当天：自动拉取最新单位净值（东方财富 pingzhongdata，浏览器直连）
+            navHint.textContent = '当天净值由东方财富自动获取（可修改）';
             try {
-                const info = await APIManager.getFundJSONP(asset.code);
+                const info = await APIManager.getEastMoneyFundNav(asset.code);
                 const nav = info.nav > 0 ? info.nav : (info.estimateNav || 0);
                 if (nav > 0) {
                     navInput.value = nav.toFixed(4);
@@ -494,7 +494,7 @@ const App = (function() {
         } else {
             // 历史日期：清空，提示手动输入
             navInput.value = '';
-            navHint.textContent = '历史净值请手动输入加仓当日单位净值（东财接口需代理）';
+            navHint.textContent = '历史净值请手动输入加仓当日单位净值';
         }
         calcBuyMoreSummary();
     }
@@ -667,7 +667,6 @@ const App = (function() {
         document.getElementById('config-cors-proxy').value = config.corsProxy || '';
         document.getElementById('config-demo-mode').checked = config.demoMode !== false;
         document.getElementById('config-use-tencent').checked = config.useTencent === true;
-        document.getElementById('config-use-eastmoney-fund').checked = config.useEastMoneyFund === true;
         document.getElementById('config-cloud-apikey').value = config.cloudApiKey || '';
         document.getElementById('config-cloud-binid').value = config.cloudBinId || '';
         
@@ -882,19 +881,13 @@ const App = (function() {
         const corsProxy = document.getElementById('config-cors-proxy').value.trim();
         const demoMode = document.getElementById('config-demo-mode').checked;
         const useTencent = document.getElementById('config-use-tencent').checked;
-        const useEastMoneyFund = document.getElementById('config-use-eastmoney-fund').checked;
-        
-        // 路线二依赖路线一：勾选天天基金时自动保持腾讯直连
-        if (useEastMoneyFund && !useTencent) {
-            document.getElementById('config-use-tencent').checked = true;
-        }
         
         const finalUseTencent = document.getElementById('config-use-tencent').checked;
         const cloudApiKey = document.getElementById('config-cloud-apikey').value.trim();
         const cloudBinId = document.getElementById('config-cloud-binid').value.trim();
         
         const existing = StorageManager.getConfig();
-        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent: finalUseTencent, useEastMoneyFund, cloudApiKey, cloudBinId };
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useTencent: finalUseTencent, cloudApiKey, cloudBinId };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
