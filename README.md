@@ -5,7 +5,7 @@
 ## 功能概览
 
 - **四市场覆盖**：A股 / 港股 / 美股 / 场外基金
-- **基金双源**：东方财富 pingzhongdata（主，浏览器直连） + 新浪 fu_（备用，需自建带 Referer 的 CORS 代理）
+- **基金双源**：东方财富 pingzhongdata（主，浏览器直连） + 蛋卷 djapi（备用，经通用 CORS 代理，数据质量优于新浪 fu_）
 - **市场估值指标**：VIX 恐慌指数 + 纳指100/标普500/沪深300/创业板/红利低波 PE（TTM），基于蛋卷/雪球历史百分位分类
 - **智能代码识别**：字母→美股，1-5位→港股，6位自动探测 A股/场内ETF 与场外基金（腾讯财经命中→A股/ETF，东方财富命中→场外基金）
 - **多币种换算**：美股 $ / 港股 HK$ / A股基金 ¥，总览统一人民币
@@ -42,30 +42,27 @@ python -m http.server 8080
 
 | 线路 | 勾选 | 股票 | 基金（主源→备用，自动切换） |
 |------|------|------|------|
-| **一（默认）** | 线路一 ✓ | 腾讯财经 qt.gtimg.cn | 东方财富 pingzhongdata → 新浪 fu_（需代理） |
-| **二** | 线路二 ✓ | 腾讯财经 qt.gtimg.cn | 新浪 fu_（需代理）→ 东方财富 pingzhongdata |
-| **三** | 都不勾 | Finnhub(美股) + 必盈(A股) + Yahoo(港股) | 东方财富 pingzhongdata → 新浪 fu_（需代理） |
+| **一（默认）** | 线路一 ✓ | 腾讯财经 qt.gtimg.cn | 东方财富 pingzhongdata → 蛋卷 djapi（需代理） |
+| **二** | 线路二 ✓ | 腾讯财经 qt.gtimg.cn | 东方财富 pingzhongdata → 蛋卷 djapi（需代理） |
+| **三** | 都不勾 | Finnhub(美股) + 必盈(A股) + Yahoo(港股) | 东方财富 pingzhongdata → 蛋卷 djapi（需代理） |
 
-> 基金数据：主源东方财富 `pingzhongdata`（浏览器直连、免代理免鉴权）；备用新浪 `fu_`（数据干净，但服务端强制校验 `Referer`，须经「自建带 Referer 的 CORS 代理」转发，详见下方）。天天基金(fundgz.1234567.com.cn)接口已于2026年全面失效(返回404)，已从代码中移除。
-> 线路一/二免 API Key 开箱即用（区别仅在基金数据源：东财 vs 新浪）。线路三需自行申请 Finnhub 和必盈 Key。
+> 基金数据：主源东方财富 `pingzhongdata`（浏览器直连、免代理免鉴权）；备用蛋卷 `djapi/fund/{code}`（免登录/免 Referer、UTF-8 干净 JSON，但响应无 CORS 头，须经「通用 CORS 代理」转发，详见下方）。天天基金接口已于2026年全面失效(返回404)，已从代码中移除；新浪 `fu_` 因覆盖不全（部分基金返回空）且需 GB18030 解码，已弃用并替换为蛋卷。
+> 线路一/二免 API Key 开箱即用（股票均走腾讯，基金源一致）。线路三需自行申请 Finnhub 和必盈 Key。
 
-### 场外基金备用源：新浪 fu_（需自建代理）
+### 场外基金备用源：蛋卷 djapi（需自建代理）
 
-新浪 `https://hq.sinajs.cn/list=fu_{代码}` 返回干净的基金净值（单位净值、日期、涨跌%），但服务端**强制校验 `Referer: https://finance.sina.com.cn`**，浏览器直连与公共 CORS 代理（codetabs/allorigins）均被拒。
+蛋卷 `https://danjuanfunds.com/djapi/fund/{代码}` 免登录、免 Referer，返回干净的 UTF-8 JSON（含名称/单位净值/日期/日涨幅），覆盖全（含东方财富/新浪查不到的基金）。但服务端**不返回 CORS 头**，浏览器直连与公共 CORS 代理（codetabs/allorigins）均被跨域拦截。
 
-**启用方法**：部署一个 Cloudflare Worker（约 20 行），通用 CORS 代理 + 为 sina 自动加 Referer，把其地址填到设置页的「CORS 代理 URL」即可。Worker 示例：
+**启用方法**：部署一个 Cloudflare Worker（约 15 行）作为通用 CORS 代理，把其地址填到设置页的「CORS 代理 URL」即可。Worker 示例：
 
 ```js
-// Cloudflare Worker：通用CORS代理，并为新浪自动加 Referer
+// Cloudflare Worker：通用 CORS 代理（蛋卷等无 CORS 头资源经此转发）
 export default {
   async fetch(request) {
     const url = new URL(request.url);
     const target = url.searchParams.get('url');
     if (!target) return new Response('missing url', { status: 400 });
-    const t = new URL(target);
-    const headers = { 'User-Agent': 'Mozilla/5.0' };
-    if (t.hostname.includes('sina')) headers['Referer'] = 'https://finance.sina.com.cn';
-    const upstream = await fetch(target, { headers });
+    const upstream = await fetch(target, { headers: { 'User-Agent': 'Mozilla/5.0' } });
     const resp = new Response(upstream.body, upstream);
     resp.headers.set('Access-Control-Allow-Origin', '*');
     return resp;
@@ -73,7 +70,7 @@ export default {
 };
 ```
 
-> 若不部署该代理，新浪备用会静默失败，基金仍由东方财富主源提供（无副作用）。该 Worker 同时可作为通用 CORS 代理提升整体可靠性。
+> 若不部署该代理，蛋卷备用会静默失败，基金仍由东方财富主源提供（无副作用）。该 Worker 同时可作为通用 CORS 代理提升整体可靠性。
 
 ### 市场估值指标
 
@@ -138,7 +135,7 @@ export default {
 ├── css/style.css      # 样式
 ├── js/
 │   ├── storage.js     # 本地存储（localStorage）
-│   ├── api.js         # API 层（腾讯/东方财富pingzhongdata/新浪fu_/蛋卷/雪球/Yahoo/JSONBin）
+│   ├── api.js         # API 层（腾讯/东方财富pingzhongdata/蛋卷djapi/雪球/Yahoo/JSONBin）
 │   ├── ui.js          # UI 渲染（资产列表/饼图/指标卡）
 │   └── app.js         # 主逻辑（初始化/事件/刷新/导入导出）
 └── README.md
