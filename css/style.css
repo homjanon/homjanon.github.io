@@ -1015,6 +1015,61 @@ input[type="checkbox"] {
     color: #92400e;
 }
 
+/* 分红逐资产列表 */
+.dividend-alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.dividend-alert-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+.dividend-alert-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.dividend-alert-item-name {
+    font-weight: 600;
+    color: #78350f;
+    font-size: 14px;
+}
+.dividend-alert-item-detail {
+    font-size: 12px;
+    color: #92700a;
+}
+.dividend-alert-item-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.btn-mini {
+    border: none;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+.btn-mini:hover { opacity: 0.85; }
+.btn-record {
+    background: #2563eb;
+    color: #fff;
+}
+.btn-snooze {
+    background: #e5e7eb;
+    color: #374151;
+}
+
 /* 分红记录列表 */
 .dividend-summary-bar {
     display: flex;

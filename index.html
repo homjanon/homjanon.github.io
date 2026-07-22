@@ -77,10 +77,12 @@
 
         <!-- 分红检测通知 -->
         <section class="dividend-alert" id="dividend-alert" style="display:none">
-            <div class="dividend-alert-content">
-                <span class="dividend-alert-icon">📢</span>
-                <span id="dividend-alert-text">检测到新分红</span>
-                <button class="btn btn-sm btn-primary" id="dividend-alert-btn">查看</button>
+            <div class="dividend-alert-content" style="flex-direction:column;align-items:stretch;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span class="dividend-alert-icon">📢</span>
+                    <span id="dividend-alert-text">检测到以下未记录的分红：</span>
+                </div>
+                <div id="dividend-alert-list"></div>
             </div>
         </section>
 
@@ -287,6 +289,13 @@
                         <input type="number" id="asset-current-price" step="0.0001" placeholder="自动获取或手动输入">
                         <small class="form-hint">留空则自动获取最新价格</small>
                     </div>
+                    <div class="form-group" id="asset-autoreinvest-wrap" style="display:none;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px">
+                        <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#2563eb;cursor:pointer">
+                            <input type="checkbox" id="asset-auto-reinvest">
+                            分红自动复投（红利低波等：分红到账后自动按除权净值买入份额）
+                        </label>
+                        <small class="form-hint">仅基金可用。红利低波/020602 默认开启；分红将直接变为份额，不进现金</small>
+                    </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" id="btn-cancel">取消</button>
                         <button type="submit" class="btn btn-primary" id="btn-save">保存</button>
@@ -408,6 +417,11 @@
                         <label for="div-per-share">每股分红（原币，税前）</label>
                         <input type="number" id="div-per-share" step="0.0001" placeholder="如：1.003" required>
                         <small class="form-hint" id="div-currency-hint">币种：CNY</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="div-ex-date">除权日（用于去重，避免重复记录）</label>
+                        <input type="date" id="div-ex-date">
+                        <small class="form-hint">检测到时自动带入，可手动修改；留空将仅按代码去重</small>
                     </div>
                     <div class="form-group">
                         <label for="div-shares">持股数量</label>

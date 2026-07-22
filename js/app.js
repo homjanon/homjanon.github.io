@@ -151,8 +151,15 @@ const App = (function() {
                     if (hint) hint.textContent = '';
                 }
             }, 400);
+            // 代码变化（含市场/类型推断后）同步刷新复投勾选框可见性与默认值
+            applyAutoReinvestVisibility();
         });
-        
+
+        // 类型/品种切换时同步刷新「分红自动复投」勾选框
+        document.getElementById('asset-type').addEventListener('change', () => applyAutoReinvestVisibility());
+        document.getElementById('asset-category').addEventListener('input', () => applyAutoReinvestVisibility());
+        document.getElementById('asset-category').addEventListener('change', () => applyAutoReinvestVisibility());
+
         // ===== 分红相关事件 =====
         
         // 分红列表按钮
@@ -161,14 +168,8 @@ const App = (function() {
             showModal('modal-dividend-list');
         });
         
-        // 分红通知横幅按钮
-        document.getElementById('dividend-alert-btn').addEventListener('click', () => {
-            document.getElementById('dividend-alert').style.display = 'none';
-            // 自动给第一个检测到的分红弹出表单
-            if (window._pendingDividends && window._pendingDividends.length) {
-                showDividendModal(window._pendingDividends[0]);
-            }
-        });
+        // 分红通知横幅：逐资产列表的「记录」「稍后提醒」按钮由 renderDividendAlert 内联 onclick 调用
+        // App.recordPendingDividend / App.snoozePendingDividend
         
         // 分红模态框关闭
         document.getElementById('div-modal-close').addEventListener('click', () => hideModal('modal-dividend'));
@@ -246,14 +247,85 @@ const App = (function() {
         console.log('检查分红...');
         try {
             const newDivs = await APIManager.checkNewDividends();
-            if (newDivs.length) {
-                window._pendingDividends = newDivs;
-                UIManager.renderDividendAlert(newDivs);
-                console.log('发现未记录分红:', newDivs.map(d => d.name + ' ' + d.perShare));
+            if (!newDivs.length) return;
+            
+            const manual = [];
+            for (const div of newDivs) {
+                const asset = StorageManager.getAssetById(div.assetId);
+                // 基金 + 开启自动复投 → 静默自动复投，不进提示列表
+                if (asset && asset.autoReinvest && div.type === 'fund') {
+                    await autoReinvestDividend(div);
+                } else {
+                    manual.push(div);
+                }
+            }
+            
+            // 过滤"稍后提醒"的
+            const visible = manual.filter(d => !StorageManager.isDividendSnoozed(d.code, d.exDate));
+            if (visible.length) {
+                window._pendingDividends = visible;
+                UIManager.renderDividendAlert(visible);
+                console.log('发现未记录分红:', visible.map(d => d.name + ' ' + d.perShare));
+            } else {
+                window._pendingDividends = [];
+                UIManager.renderDividendAlert([]);
             }
         } catch (e) {
             console.warn('分红检测异常:', e.message);
         }
+    }
+
+    // 红利低波等：分红自动复投（按除权后净值折算份额，直接增加持仓，不进现金）
+    function autoReinvestDividend(div) {
+        const asset = StorageManager.getAssetById(div.assetId);
+        if (!asset) return;
+        const perUnit = div.perShare;
+        const holdingShares = asset.shares;
+        const gross = perUnit * holdingShares;
+        if (!(gross > 0)) return;
+        
+        const currency = div.currency || 'CNY';
+        const navAfter = (div.navAfter && div.navAfter > 0) ? div.navAfter : (asset.currentPrice || 0);
+        
+        // 兜底：无复投价 → 退化为现金到账
+        if (!navAfter || navAfter <= 0) {
+            const rec = {
+                assetId: asset.id, assetCode: asset.code, assetName: asset.name,
+                perShare: perUnit, shares: holdingShares, totalAmount: gross, taxRate: 0,
+                taxAmount: 0, netAmount: gross, currency, status: 'received',
+                exDate: div.exDate || '', reportPeriod: div.reportPeriod || '', source: 'auto-fallback'
+            };
+            StorageManager.addDividendRecord(rec);
+            StorageManager.addCash(gross, currency);
+            UIManager.showToast(`(复投价缺失) ${asset.name}(${asset.code}) 分红已作为现金到账 ${UIManager.formatCurrency(gross, currency)}`, 'info');
+            render();
+            return;
+        }
+        
+        // 基金支持小数份额
+        const reinvestShares = Math.round((gross / navAfter) * 10000) / 10000;
+        const reinvestCost = reinvestShares * navAfter;
+        const oldShares = asset.shares;
+        const oldCost = asset.cost;
+        const newShares = oldShares + reinvestShares;
+        const newCost = (oldShares * oldCost + reinvestCost) / newShares;
+        
+        StorageManager.updateAsset(asset.id, { shares: newShares, cost: newCost });
+        
+        StorageManager.addDividendRecord({
+            assetId: asset.id, assetCode: asset.code, assetName: asset.name,
+            perShare: perUnit, shares: holdingShares, totalAmount: gross, taxRate: 0,
+            taxAmount: 0, netAmount: gross, currency,
+            status: 'reinvested', exDate: div.exDate || '', reportPeriod: div.reportPeriod || '',
+            source: 'auto', navAfter,
+            reinvest: { shares: reinvestShares, price: navAfter, date: div.exDate || '' }
+        });
+        
+        UIManager.showToast(
+            `${asset.name}(${asset.code}) 分红自动复投 +${reinvestShares} 份 @${UIManager.formatCurrency(navAfter, currency)}`,
+            'success'
+        );
+        render();
     }
     
     // 各资产类型默认税率：A股长持免税0%，港股通10%，美股30%，基金0%
@@ -286,10 +358,15 @@ const App = (function() {
             if (prefill.type === 'fund' && prefill.navAfter) {
                 document.getElementById('div-per-share').dataset.navAfter = prefill.navAfter;
             }
+            // 除权日（用于去重）与报告期：检测到的自动带入，可改
+            document.getElementById('div-ex-date').value = prefill.exDate || '';
+            window._dividendReportPeriod = prefill.reportPeriod || '';
         } else {
             select.selectedIndex = 0;
             document.getElementById('div-per-share').value = '';
             document.getElementById('div-tax-rate').value = 10;
+            document.getElementById('div-ex-date').value = '';
+            window._dividendReportPeriod = '';
         }
         
         onDividendAssetChange();
@@ -302,6 +379,28 @@ const App = (function() {
         const asset = StorageManager.getAssetById(assetId);
         if (!asset) { UIManager.showToast('未找到资产', 'error'); return; }
         showDividendModal({ assetId });
+    }
+    
+    // 从分红横幅逐资产列表：记录指定待处理分红
+    function recordPendingDividend(index) {
+        const div = (window._pendingDividends || [])[index];
+        if (!div) return;
+        document.getElementById('dividend-alert').style.display = 'none';
+        showDividendModal(div);
+    }
+    
+    // 从分红横幅：稍后提醒（暂存，不再反复弹出）
+    function snoozePendingDividend(index) {
+        const div = (window._pendingDividends || [])[index];
+        if (!div) return;
+        StorageManager.snoozeDividend(div.code, div.exDate);
+        window._pendingDividends = (window._pendingDividends || []).filter((_, i) => i !== index);
+        if (!window._pendingDividends.length) {
+            document.getElementById('dividend-alert').style.display = 'none';
+        } else {
+            UIManager.renderDividendAlert(window._pendingDividends);
+        }
+        UIManager.showToast('已稍后提醒，本次不再提示', 'info');
     }
     
     // 分红资产下拉切换时更新持股数和币种、标签文字
@@ -363,6 +462,9 @@ const App = (function() {
         // 从分红检测中获取附加数据
         const perShareEl = document.getElementById('div-per-share');
         const navAfter = perShareEl.dataset.navAfter ? parseFloat(perShareEl.dataset.navAfter) : null;
+        // 除权日：手动填写或检测带入；用于 isDividendRecorded 去重，避免反复弹出
+        const exDate = document.getElementById('div-ex-date').value || '';
+        const reportPeriod = window._dividendReportPeriod || '';
         
         const record = {
             assetId, assetCode: asset.code, assetName: asset.name,
@@ -370,7 +472,7 @@ const App = (function() {
             taxAmount: Math.round(taxAmount * 100) / 100,
             netAmount: Math.round(netAmount * 100) / 100,
             currency, status: 'received',
-            exDate: '', reportPeriod: '', source: navAfter ? 'auto' : 'manual',
+            exDate, reportPeriod, source: navAfter ? 'auto' : 'manual',
             navAfter, reinvest: null
         };
         
@@ -619,6 +721,8 @@ const App = (function() {
         document.getElementById('query-result').textContent = '';
         document.getElementById('asset-category').value = '未分类';
         document.getElementById('asset-platform').value = '';
+        // 基金复投勾选框：默认隐藏，按类型显示
+        applyAutoReinvestVisibility();
         
         // 更新品种列表
         updateCategoryDatalist();
@@ -632,6 +736,31 @@ const App = (function() {
         const list = document.getElementById('category-list');
         list.innerHTML = (config.categories || ['红利','纳指100','标普500'])
             .map(c => `<option value="${c}">`).join('');
+    }
+    
+    // 基金专属「分红自动复投」勾选框：仅基金类型显示；默认按品种/代码推断
+    function applyAutoReinvestVisibility(asset) {
+        const wrap = document.getElementById('asset-autoreinvest-wrap');
+        const cb = document.getElementById('asset-auto-reinvest');
+        const type = document.getElementById('asset-type').value;
+        if (type !== 'fund') {
+            wrap.style.display = 'none';
+            cb.checked = false;
+            return;
+        }
+        wrap.style.display = 'block';
+        const code = document.getElementById('asset-code').value.trim();
+        const category = document.getElementById('asset-category').value.trim();
+        const isLowVol = (category && category.includes('红利低波')) || code === '020602';
+        if (asset && asset.type === 'fund') {
+            // 编辑已有：以已存值优先，未存则按默认规则
+            cb.checked = (asset.autoReinvest !== undefined && asset.autoReinvest !== null)
+                ? !!asset.autoReinvest
+                : isLowVol;
+        } else {
+            // 新增：按默认规则
+            cb.checked = isLowVol;
+        }
     }
     
     // 显示编辑资产模态框
@@ -654,6 +783,9 @@ const App = (function() {
         document.getElementById('asset-cost').value = asset.cost;
         document.getElementById('asset-shares').value = asset.shares;
         document.getElementById('asset-current-price').value = asset.currentPrice || '';
+        
+        // 基金复投勾选框
+        applyAutoReinvestVisibility(asset);
         
         updateCategoryDatalist();
         
@@ -746,9 +878,15 @@ const App = (function() {
         }
         
         const currency = APIManager.getAssetCurrency(type);
-        
+
+        // 分红自动复投：仅基金有意义，其余类型强制 false
+        const autoReinvest = type === 'fund'
+            ? document.getElementById('asset-auto-reinvest').checked
+            : false;
+
         const assetData = {
             type, code, name, category, currency, cost, shares, currentPrice, platform,
+            autoReinvest,
             lastUpdateTime: currentPrice ? Date.now() : null
         };
         
@@ -1095,7 +1233,10 @@ const App = (function() {
         showBuyMoreModal,
         submitBuyMore,
         exportData,
-        importData
+        importData,
+        recordPendingDividend,
+        snoozePendingDividend,
+        autoReinvestDividend
     };
 
     // 页面加载完成后初始化
@@ -1117,6 +1258,9 @@ const App = (function() {
         showBuyMoreModal,
         submitBuyMore,
         exportData,
-        importData
+        importData,
+        recordPendingDividend,
+        snoozePendingDividend,
+        autoReinvestDividend
     };
 })();

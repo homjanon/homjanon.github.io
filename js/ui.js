@@ -710,18 +710,33 @@ const UIManager = (function() {
     
     // ==================== 分红相关渲染 ====================
     
-    // 渲染分红检测通知横幅
+    // 渲染分红检测通知横幅（逐资产列表：记录 / 稍后提醒）
     function renderDividendAlert(newDividends) {
         const alert = document.getElementById('dividend-alert');
-        if (!alert) return;
+        const list = document.getElementById('dividend-alert-list');
+        if (!alert || !list) return;
         if (!newDividends || !newDividends.length) {
             alert.style.display = 'none';
+            list.innerHTML = '';
             return;
         }
-        const names = [...new Set(newDividends.map(d => d.name))].join('、');
-        const unit = newDividends[0].type === 'fund' ? '份' : '股';
-        document.getElementById('dividend-alert-text').textContent = 
-            `检测到 ${names} 有未记录的分红（每${unit} ${newDividends[0].perShare.toFixed(4)} 元）`;
+        list.innerHTML = newDividends.map((d, i) => {
+            const unit = d.type === 'fund' ? '份' : '股';
+            const per = (d.perShare || 0).toFixed(4);
+            const ex = d.exDate ? ` · 除权日 ${d.exDate}` : '';
+            const total = formatCurrency((d.perShare || 0) * (d.shares || 0), d.currency || 'CNY');
+            return `
+                <div class="dividend-alert-item">
+                    <div class="dividend-alert-item-info">
+                        <span class="dividend-alert-item-name">${d.name || d.code}</span>
+                        <span class="dividend-alert-item-detail">每${unit} ${per} 元${ex} · 合计 ${total}</span>
+                    </div>
+                    <div class="dividend-alert-item-actions">
+                        <button type="button" class="btn-mini btn-record" onclick="App.recordPendingDividend(${i})">记录</button>
+                        <button type="button" class="btn-mini btn-snooze" onclick="App.snoozePendingDividend(${i})">稍后提醒</button>
+                    </div>
+                </div>`;
+        }).join('');
         alert.style.display = 'block';
     }
     

@@ -13,6 +13,7 @@ const StorageManager = (function() {
     const CONFIG_KEY = 'investment_tracker_config';
     const CASH_KEY = 'investment_cash_balance';
     const DIVIDEND_KEY = 'investment_dividends';
+    const SNOOZE_KEY = 'investment_dividend_snooze';
     
     // 获取所有资产数据
     function getAssets() {
@@ -221,6 +222,26 @@ const StorageManager = (function() {
         return records.filter(r => r.assetId === assetId);
     }
     
+    // ==================== 分红"稍后提醒"暂存（避免未记录时每次打开都弹） ====================
+    function getSnoozedDividends() {
+        try {
+            const d = localStorage.getItem(SNOOZE_KEY);
+            return d ? JSON.parse(d) : [];
+        } catch (e) { return []; }
+    }
+    
+    function isDividendSnoozed(assetCode, exDate) {
+        return getSnoozedDividends().some(s => s.code === assetCode && s.exDate === exDate);
+    }
+    
+    function snoozeDividend(assetCode, exDate) {
+        const list = getSnoozedDividends();
+        if (!list.some(s => s.code === assetCode && s.exDate === exDate)) {
+            list.push({ code: assetCode, exDate });
+            try { localStorage.setItem(SNOOZE_KEY, JSON.stringify(list)); } catch (e) {}
+        }
+    }
+    
     // 剥离敏感密钥（上传云端前调用）：深拷贝后清空各类 Key，本地不受影响
     function stripSecrets(data) {
         const clone = JSON.parse(JSON.stringify(data));
@@ -319,6 +340,9 @@ const StorageManager = (function() {
         updateDividendRecord,
         deleteDividendRecord,
         isDividendRecorded,
-        getDividendsByAsset
+        getDividendsByAsset,
+        getSnoozedDividends,
+        isDividendSnoozed,
+        snoozeDividend
     };
 })();
