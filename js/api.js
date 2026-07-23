@@ -630,14 +630,29 @@ const APIManager = (function() {
         }
     }
 
-    // 自动识别资产类别：6位代码区分 A股/场内ETF 与 场外基金；纯字母→美股；≤5位数字→港股
+    // 从腾讯财经返回的 tilde 字符串中读取「证券类型」字段（索引 61：GP-A=股票 / ETF / LOF 等）
+    function getTencentSecType(fieldsStr) {
+        if (!fieldsStr) return '';
+        const fields = fieldsStr.split('~');
+        const raw = (fields[61] || '').trim();
+        if (raw) return raw;
+        // 兜底：扫描已知类型 token（防止字段索引漂移）
+        const KNOWN = ['ETF', 'LOF', 'GP-A', 'GP-B', 'KCB', 'CYB', 'INDEX', 'FUND', 'FUND-A', 'ZQ', 'KZZ', 'QZ'];
+        for (const f of fields) {
+            const t = (f || '').trim();
+            if (KNOWN.includes(t)) return t;
+        }
+        return '';
+    }
+
+    // 自动识别资产类别：6位代码区分 场内ETF/LOF 与 普通A股（均并入"股票"a-stock）；纯字母→美股；≤5位数字→港股；场外基金→fund
     async function identifyAssetType(rawCode) {
         const code = (rawCode || '').trim().toUpperCase();
         if (/^[A-Z.]{1,6}$/.test(code)) return 'us-stock';
         if (/^\d{1,5}$/.test(code)) return 'hk-stock';
         if (!/^\d{6}$/.test(code)) return 'a-stock';
 
-        // ① 腾讯财经：同时探测 沪(sh)/深(sz)，覆盖 A股与场内ETF（按价格计价）
+        // ① 腾讯财经：探测 沪(sh)/深(sz)，并读取「证券类型」字段作为识别依据
         for (const prefix of ['sh', 'sz']) {
             const tcode = prefix + code;
             try {
@@ -645,13 +660,21 @@ const APIManager = (function() {
                 let text;
                 try { text = await fetchGBK(url); }
                 catch (e) { if (isCORSError(e)) text = await fetchGBKviaProxy(url); else continue; }
-                if (text && new RegExp(`v_${tcode.replace('.', '\\.')}="([^"]*)"`).test(text)) {
+                const m = text && text.match(new RegExp(`v_${tcode.replace('.', '\\.')}="([^"]*)"`));
+                if (m) {
+                    // 腾讯能返回即说明是交易所上市品种；场内ETF/LOF 与普通A股 均按用户决定并入「股票(a-stock)」
+                    // （此前腾讯偶发失败时 563300 曾被误判为场外基金，导致净值计价 + 误显"分红自动复投"）
+                    const secType = getTencentSecType(m[1]);
+                    console.log(`[identify] ${code} 腾讯证券类型=${secType || '未知'} → a-stock`);
                     return 'a-stock';
                 }
             } catch (e) { /* 尝试另一个交易所 */ }
         }
 
-        // ② 东方财富：场外基金探测（按净值计价）
+        // ①-b 腾讯无返回兜底：场内基金/ETF/LOF 代码前缀 直接判为 a-stock，避免误判为场外基金
+        if (/^(5[0-9]|15|16)\d{4}$/.test(code)) return 'a-stock';
+
+        // ② 东方财富：场外基金探测（按净值计价，仅 腾讯未覆盖的场外基金进入此分支）
         try {
             const name = await getEastMoneyFundName(code);
             if (name && name !== code) return 'fund';
