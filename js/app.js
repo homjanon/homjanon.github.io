@@ -952,7 +952,8 @@ const App = (function() {
                 change: quote.change || 0,
                 changePercent: quote.changePercent || 0,
                 previousClose: quote.previousClose || price,
-                lastUpdateTime: Date.now()
+                lastUpdateTime: Date.now(),
+                navDate: quote.navDate || asset.navDate
             });
             
             if (!result) throw new Error('保存数据失败');

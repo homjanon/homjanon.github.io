@@ -1017,6 +1017,12 @@ const APIManager = (function() {
         if (!assets.length) return [];
         
         const today = new Date().toISOString().slice(0, 10);
+        // 分红提醒窗口：仅除权日 ±REMIND_WINDOW_DAYS 天内提醒，超出不再弹（避免历史分红反复提醒）
+        const REMIND_WINDOW_DAYS = 3;
+        const withinRemindWindow = (exDate) => {
+            const diff = Math.abs(Math.round((new Date(exDate) - new Date(today)) / 86400000));
+            return diff <= REMIND_WINDOW_DAYS;
+        };
         const newDividends = [];
         
         // --- A股分红检测 ---
@@ -1027,7 +1033,7 @@ const APIManager = (function() {
             try {
                 const dividends = await fetchDividends(code);
                 const implemented = dividends.filter(d => 
-                    d.assignProgress === '实施分配' && d.perShare && d.exDate && d.exDate <= today
+                    d.assignProgress === '实施分配' && d.perShare && d.exDate && withinRemindWindow(d.exDate)
                 );
                 for (const d of implemented) {
                     if (!StorageManager.isDividendRecorded(code, d.exDate)) {
@@ -1057,7 +1063,7 @@ const APIManager = (function() {
         for (const code of fundCodes) {
             try {
                 const dividends = await fetchFundDividends(code);
-                const ready = dividends.filter(d => d.perUnit && d.exDate && d.exDate <= today);
+                const ready = dividends.filter(d => d.perUnit && d.exDate && withinRemindWindow(d.exDate));
                 for (const d of ready) {
                     if (!StorageManager.isDividendRecorded(code, d.exDate)) {
                         for (const asset of assets.filter(a => a.code === code && a.type === 'fund')) {
