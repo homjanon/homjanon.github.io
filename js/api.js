@@ -419,7 +419,8 @@ const APIManager = (function() {
     
     function getTencentCode(type, code) {
         switch (type) {
-            case 'a-stock': return (code.startsWith('6') ? 'sh' : 'sz') + code;
+            // 6(沪A/科创板)、5(沪市ETF/指数/债券)、9(沪市B股) 属上交所 sh；其余(0/1/2/3 等)属深交所 sz
+            case 'a-stock': return (/^[569]/.test(code) ? 'sh' : 'sz') + code;
             case 'hk-stock': return 'hk' + normHK(code).padStart(5, '0');
             case 'us-stock': return 'us' + code.toUpperCase().replace('.', '');
             default: return code;
