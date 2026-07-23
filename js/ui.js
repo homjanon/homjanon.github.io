@@ -435,7 +435,7 @@ const UIManager = (function() {
             }
         }
         
-        // 秋哥操作: 自定义渲染（大盘点位+关键位+操作指引+推荐标的）
+        // 秋哥操作: 自定义渲染（仓位信号徽章为主视觉 + 指数 + 关键位）
         {
             const elVal = document.getElementById('ind-qiuge-value');
             const elLv = document.getElementById('ind-qiuge-levels');
@@ -446,30 +446,29 @@ const UIManager = (function() {
             if (d && d.indexClose != null) {
                 const pct = d.indexChange != null ? d.indexChange : 0;
                 const sign = pct >= 0 ? '+' : '';
-                elVal.textContent = `${d.indexName} ${d.indexClose.toFixed(2)}(${sign}${pct.toFixed(2)}%)`;
-                elLv.textContent = `${d.support}生命线 · ${d.pressure}压力`;
-                
-                // 按当前点位动态显示操作指引
-                let guideHtml = '';
                 const close = d.indexClose;
+                // 仓位信号三态 -> 徽章主视觉（修复 positionMax*100 误显为"60成"，改为 *10 成）
+                let state = 'yellow', signalText = '';
                 if (close > d.pressure) {
-                    guideHtml = '<span class="positive">🟢 &gt;' + d.pressure + ' 加至7成</span> · <span class="up">📈 反弹升级</span>';
+                    state = 'green';
+                    signalText = '加至 7 成';
                 } else if (close >= d.support) {
-                    guideHtml = '<span style="color:#d97706">🟡 仓位≤' + (d.positionMax * 100) + '成</span> · ' +
-                                '<span style="color:#d97706">⚠️ 跌破' + d.support + '则降仓</span>';
+                    state = 'yellow';
+                    signalText = '仓位 ≤ ' + Math.round(d.positionMax * 10) + ' 成';
                 } else {
-                    guideHtml = '<span class="negative">🔴 有效跌破' + d.support + '</span> · ' +
-                                '<span class="negative">🏠 全面降仓留招行</span>';
+                    state = 'red';
+                    signalText = '全面降仓留招行';
                 }
-                elGuide.innerHTML = guideHtml;
-                elGuide.className = 'indicator-change';
-                
-                // 推荐标的（紧凑展示）
-                const picks = d.picks.join(' · ');
-                const watchStr = d.watch.length ? ` · ${d.watch.join('·')}(等)` : '';
-                elPicks.textContent = picks + watchStr;
-                
-                elDate.textContent = `${d.dataDate}`;
+                elVal.innerHTML = '<span class="signal-pill signal-' + state + '">' +
+                    '<span class="signal-dot"></span>' + signalText + '</span>';
+                // 指数行（移入 levels 槽，涨红跌绿）
+                elLv.innerHTML = d.indexName + ' ' + close.toFixed(2) +
+                    ' <span style="color:' + (pct >= 0 ? '#A32D2D' : '#10b981') + '">(' + sign + pct.toFixed(2) + '%)</span>';
+                // 关键位（移入 guide 槽）
+                elGuide.textContent = d.support + ' 生命线 · ' + d.pressure + ' 压力';
+                // 推荐标的已移至卡9，本卡不再展示
+                elPicks.textContent = '';
+                elDate.textContent = d.dataDate;
             } else {
                 elVal.textContent = '--';
                 elLv.textContent = '';
@@ -479,14 +478,15 @@ const UIManager = (function() {
             }
         }
         
-        // 一句话总结: 秋哥全文
+        // 一句话总结: 总结 + 展望 + 推荐标的（组合进同一容器，line-clamp 防溢出）
         {
             const elSummary = document.getElementById('ind-qiuge-summary');
             const elDate = document.getElementById('ind-qiuge-summary-date');
             const d = data.qiuge;
             if (d && d.summary) {
-                elSummary.textContent = d.summary;
-                elSummary.className = 'indicator-summary';
+                const outlook = d.outlook ? '<div class="qiuge-outlook">展望：' + d.outlook + '</div>' : '';
+                const picks = (d.picks && d.picks.length) ? '<div class="qiuge-picks">推荐：' + d.picks.join(' · ') + '</div>' : '';
+                elSummary.innerHTML = '<div class="qiuge-summary-text">' + d.summary + '</div>' + outlook + picks;
                 elDate.textContent = d.dataDate || '';
             } else {
                 elSummary.textContent = '--';
