@@ -466,8 +466,10 @@ const UIManager = (function() {
                     ' <span style="color:' + (pct >= 0 ? '#A32D2D' : '#10b981') + '">(' + sign + pct.toFixed(2) + '%)</span>';
                 // 关键位（移入 guide 槽）
                 elGuide.textContent = d.support + ' 生命线 · ' + d.pressure + ' 压力';
-                // 推荐标的已移至卡9，本卡不再展示
-                elPicks.textContent = '';
+                // 展望（原在卡9，因过长截断，移至此卡并用小字体显示）
+                elPicks.innerHTML = d.outlook
+                    ? '<div class="qiuge-outlook qiuge-outlook-sm">展望：' + d.outlook + '</div>'
+                    : '';
                 elDate.textContent = d.dataDate;
             } else {
                 elVal.textContent = '--';
@@ -484,9 +486,9 @@ const UIManager = (function() {
             const elDate = document.getElementById('ind-qiuge-summary-date');
             const d = data.qiuge;
             if (d && d.summary) {
-                const outlook = d.outlook ? '<div class="qiuge-outlook">展望：' + d.outlook + '</div>' : '';
+                // 展望已移至卡8（缩字体内嵌），本卡仅展示 总结 + 推荐 + 日期
                 const picks = (d.picks && d.picks.length) ? '<div class="qiuge-picks">推荐：' + d.picks.join(' · ') + '</div>' : '';
-                elSummary.innerHTML = '<div class="qiuge-summary-text">' + d.summary + '</div>' + outlook + picks;
+                elSummary.innerHTML = '<div class="qiuge-summary-text">' + d.summary + '</div>' + picks;
                 elDate.textContent = d.dataDate || '';
             } else {
                 elSummary.textContent = '--';
