@@ -480,18 +480,30 @@ const UIManager = (function() {
             }
         }
         
-        // 一句话总结: 总结 + 展望 + 推荐标的（组合进同一容器，line-clamp 防溢出）
+        // 秋哥精选标的: 仅展示 picks_detail（标的明细），双行紧凑列表 + 仓位徽章
         {
-            const elSummary = document.getElementById('ind-qiuge-summary');
-            const elDate = document.getElementById('ind-qiuge-summary-date');
+            const elBox = document.getElementById('ind-qiuge-picks-detail');
+            const elDate = document.getElementById('ind-qiuge-picks-date');
             const d = data.qiuge;
-            if (d && d.summary) {
-                // 展望(outlook)已不再展示；本卡仅展示 总结 + 推荐 + 日期
-                const picks = (d.picks && d.picks.length) ? '<div class="qiuge-picks">推荐：' + d.picks.join(' · ') + '</div>' : '';
-                elSummary.innerHTML = '<div class="qiuge-summary-text">' + d.summary + '</div>' + picks;
+            if (d && d.picksDetail && d.picksDetail.length) {
+                const rows = d.picksDetail.map(function (p) {
+                    const name = p.name || '';
+                    const code = p.code || '';
+                    const price = (p.price != null && p.price !== '') ? '现价 ' + p.price : '';
+                    const action = p.action || '';
+                    const position = p.position || '';
+                    const posBadge = position ? '<span class="pos-badge">' + position + '</span>' : '';
+                    return '<div class="pd-row">' +
+                        '<div class="pd-line1"><span class="pd-name">' + name + '</span>' +
+                        '<span class="pd-code">' + code + '</span>' +
+                        '<span class="pd-price">' + price + '</span></div>' +
+                        '<div class="pd-line2"><span class="pd-action">' + action + '</span>' + posBadge + '</div>' +
+                        '</div>';
+                }).join('');
+                elBox.innerHTML = '<div class="pd-list">' + rows + '</div>';
                 elDate.textContent = d.dataDate || '';
             } else {
-                elSummary.textContent = '--';
+                elBox.textContent = '--';
                 elDate.textContent = '';
             }
         }

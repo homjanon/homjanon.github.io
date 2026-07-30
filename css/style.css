@@ -805,10 +805,46 @@ body {
     margin-top: 5px;
     border-left-width: 2px;
 }
-.qiuge-picks {
-    font-size: 12px;
+/* 卡9 秋哥精选标的：picks_detail 双行紧凑列表 */
+.pd-list {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.pd-row {
+    border-bottom: 1px dashed #e2e8f0;
+    padding-bottom: 5px;
+}
+.pd-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.pd-line1 {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 13px;
+}
+.pd-name { font-weight: 600; color: #1e293b; }
+.pd-code { font-size: 11px; color: #94a3b8; }
+.pd-price { font-size: 11px; color: #185fa5; margin-left: auto; }
+.pd-line2 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    font-size: 11px;
     color: #64748b;
-    margin-top: 7px;
+}
+.pos-badge {
+    font-size: 10px;
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 0 7px;
+    white-space: nowrap;
 }
 
 .indicator-change {
