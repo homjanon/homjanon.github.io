@@ -1219,17 +1219,43 @@ const APIManager = (function() {
         if (!token || !repo) throw new Error('请填写 Gitee 私人令牌与仓库(owner/repo)');
         const content = utf8ToBase64(JSON.stringify(data, null, 2));
         const url = `https://gitee.com/api/v5/repos/${repo}/contents/${path}`;
-        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        const authHeader = { 'Authorization': `Bearer ${token}` };
+        const headers = { ...authHeader, 'Content-Type': 'application/json' };
+
+        // 1) 拿 sha（存在则更新；Gitee 对不存在文件也返回 200 空 body，不返回 404，
+        //    故用 j.sha 是否存在判断；no-store 防浏览器缓存干扰）
         let sha = null;
-        const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (r.status === 404) { sha = null; }
-        else if (r.ok) { const j = await r.json(); sha = j.sha || null; }
-        else { const err = await r.text().catch(() => ''); throw new Error(`Gitee ${r.status}: ${err.substring(0, 200)}`); }
-        const method = sha ? 'PUT' : 'POST';
-        const body = sha
+        try {
+            const g = await fetch(url, { headers: authHeader, cache: 'no-store' });
+            if (g.ok) { const j = await g.json().catch(() => ({})); sha = j.sha || null; }
+        } catch (_) { /* 忽略，进入下面的创建/兜底 */ }
+
+        // 2) 写：有 sha → PUT 覆盖；无 sha → POST 新建
+        let method = sha ? 'PUT' : 'POST';
+        let body = sha
             ? { content, message: 'investment-tracker backup update', sha }
             : { content, message: 'investment-tracker backup init' };
-        const resp = await fetch(url, { method, headers, body: JSON.stringify(body) });
+        let resp = await fetch(url, { method, headers, body: JSON.stringify(body) });
+
+        // 3) 兜底：若误用 POST 撞上「文件已存在」(422) 或 PUT 报「sha missing」(400)，
+        //    重新拉 sha 再 PUT 一次，确保覆盖而非失败（与 GitHub 始终覆盖行为对齐）
+        if (!resp.ok) {
+            const errText = await resp.text().catch(() => '');
+            const retryable = /文件已存在|already exists|sha is missing|sha is empty/i.test(errText);
+            if (retryable) {
+                try {
+                    const g2 = await fetch(url, { headers: authHeader, cache: 'no-store' });
+                    if (g2.ok) { const j2 = await g2.json().catch(() => ({})); sha = j2.sha || null; }
+                } catch (_) {}
+                if (sha) {
+                    resp = await fetch(url, {
+                        method: 'PUT', headers,
+                        body: JSON.stringify({ content, message: 'investment-tracker backup update', sha })
+                    });
+                }
+            }
+        }
+
         if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`Gitee ${resp.status}: ${err.substring(0, 200)}`); }
         return path;
     }
@@ -1237,10 +1263,12 @@ const APIManager = (function() {
         const { cloudRepo: repo, cloudPath: path, cloudToken: token } = config;
         if (!token || !repo) throw new Error('请填写 Gitee 私人令牌与仓库(owner/repo)');
         const url = `https://gitee.com/api/v5/repos/${repo}/contents/${path}`;
-        const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store' });
         if (resp.status === 404) throw new Error('Gitee 仓库中暂无备份文件，请先备份一次');
         if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`Gitee ${resp.status}: ${err.substring(0, 200)}`); }
-        const j = await resp.json();
+        const j = await resp.json().catch(() => ({}));
+        // Gitee 对不存在文件返回 200 空 body（无 content），需单独判定
+        if (!j || !j.content) throw new Error('Gitee 仓库中暂无备份文件，请先备份一次');
         return JSON.parse(base64ToUtf8(j.content || ''));
     }
 
