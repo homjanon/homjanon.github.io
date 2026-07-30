@@ -123,6 +123,10 @@ const StorageManager = (function() {
             useLine2: false,
             cloudApiKey: '',
             cloudBinId: '',
+            cloudProvider: 'jsonbin',        // jsonbin | gitee | github
+            cloudToken: '',                  // Gitee / GitHub 私人令牌 (PAT)
+            cloudRepo: '',                   // owner/repo
+            cloudPath: 'data/user-data.json',
             autoSync: false,
             lastSyncTime: 0,
             categories: ['红利', '纳指100', '标普500']
@@ -249,6 +253,7 @@ const StorageManager = (function() {
             clone.config.finnhubKey = '';
             clone.config.biyingKey = '';
             clone.config.cloudApiKey = '';
+            clone.config.cloudToken = '';
         }
         return clone;
     }
@@ -276,6 +281,10 @@ const StorageManager = (function() {
                 merged.finnhubKey = data.config.finnhubKey || local.finnhubKey || '';
                 merged.biyingKey = data.config.biyingKey || local.biyingKey || '';
                 merged.cloudApiKey = data.config.cloudApiKey || local.cloudApiKey || '';
+                merged.cloudProvider = data.config.cloudProvider || local.cloudProvider || 'jsonbin';
+                merged.cloudToken = data.config.cloudToken || local.cloudToken || '';
+                merged.cloudRepo = data.config.cloudRepo || local.cloudRepo || '';
+                merged.cloudPath = data.config.cloudPath || local.cloudPath || 'data/user-data.json';
                 saveConfig(merged);
             }
             if (data.cash) {

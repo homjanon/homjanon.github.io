@@ -10,7 +10,7 @@
     <meta http-equiv="Expires" content="0">
     <link rel="manifest" href="manifest.json">
     <title>个人投资管理系统</title>
-    <link rel="stylesheet" href="css/style.css?v=20260730a">
+    <link rel="stylesheet" href="css/style.css?v=20260730b">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -357,24 +357,48 @@
                         </label>
                     </div>
                     <div class="form-group" style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:8px">
-                        <small style="color:#2563eb;font-weight:600">☁️ JSONBin 云端备份</small>
+                        <small style="color:#2563eb;font-weight:600">☁️ 云端备份（跨设备同步）</small>
                     </div>
                     <div class="form-group">
+                        <label for="config-cloud-provider">同步方式</label>
+                        <select id="config-cloud-provider">
+                            <option value="jsonbin">JSONBin（原有）</option>
+                            <option value="gitee">Gitee 私人仓（国内访问更顺）</option>
+                            <option value="github">GitHub 私人仓</option>
+                        </select>
+                        <small class="form-hint">Gitee / GitHub 把 user-data.json 存到你自己的私人仓库，纯前端直连，无需服务器。</small>
+                    </div>
+                    <div class="form-group" id="grp-jsonbin">
                         <label for="config-cloud-apikey">JSONBin API Key</label>
                         <input type="password" id="config-cloud-apikey" placeholder="$2b$10$xxxxxxxxxxxxxxxxxxxxx">
                         <small class="form-hint">注册后获取：<a href="https://jsonbin.io/api-keys" target="_blank">jsonbin.io/api-keys</a></small>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="grp-jsonbin2">
                         <label for="config-cloud-binid">Bin ID（选填，首次备份后自动填充）</label>
                         <input type="text" id="config-cloud-binid" placeholder="首次备份成功后自动出现">
                         <small class="form-hint">跨设备导入时粘贴此 ID；同一 Key 下首次备份自动生成</small>
+                    </div>
+                    <div class="form-group" id="grp-token" style="display:none">
+                        <label for="config-cloud-token">私人令牌 (PAT)</label>
+                        <input type="password" id="config-cloud-token" placeholder="ghp_xxx / gitee token">
+                        <small class="form-hint">GitHub 用细粒度 PAT（仅授权该仓 Contents 读写）；Gitee 勾 projects 权限。仅存本浏览器，上传前已剥离。</small>
+                    </div>
+                    <div class="form-group" id="grp-repo" style="display:none">
+                        <label for="config-cloud-repo">仓库 (owner/repo)</label>
+                        <input type="text" id="config-cloud-repo" placeholder="hopojalay/cloud">
+                        <small class="form-hint">存放备份的私人仓库，例如 hopojalay/cloud</small>
+                    </div>
+                    <div class="form-group" id="grp-path" style="display:none">
+                        <label for="config-cloud-path">文件路径</label>
+                        <input type="text" id="config-cloud-path" placeholder="data/user-data.json" value="data/user-data.json">
+                        <small class="form-hint">仓库内相对路径，默认 data/user-data.json</small>
                     </div>
                     <div class="form-group">
                         <label style="color:#2563eb;font-weight:600">
                             <input type="checkbox" id="config-auto-sync">
                             ☁️ 自动同步（持仓变更后自动上传，打开时检查云端更新）
                         </label>
-                        <small class="form-hint" style="margin-left:24px">默认关闭。开启前请先填 API Key 并手动备份一次。持仓改动 3 秒后自动上传（已剥离所有 Key）；打开页面若检测到云端更新会询问是否拉取，不会静默覆盖。</small>
+                        <small class="form-hint" style="margin-left:24px">默认关闭。开启后持仓改动 3 秒自动上传（已剥离所有 Key）；打开页面若检测到云端更新会询问是否拉取，不会静默覆盖。</small>
                     </div>
                     <div class="form-actions" style="margin-bottom:12px">
                         <button type="button" class="btn btn-primary" id="btn-cloud-backup">☁️ 备份到云端</button>
@@ -546,9 +570,9 @@
         </div>
     </div>
 
-    <script src="js/storage.js?v=20260730a"></script>
-    <script src="js/api.js?v=20260730a"></script>
-    <script src="js/ui.js?v=20260730a"></script>
-    <script src="js/app.js?v=20260730a"></script>
+    <script src="js/storage.js?v=20260730b"></script>
+    <script src="js/api.js?v=20260730b"></script>
+    <script src="js/ui.js?v=20260730b"></script>
+    <script src="js/app.js?v=20260730b"></script>
 </body>
 </html>

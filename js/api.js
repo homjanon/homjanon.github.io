@@ -1178,47 +1178,116 @@ const APIManager = (function() {
     
     // ==================== JSONBin 云端备份 ====================
     
-    async function cloudBackup(data, apiKey) {
-        const config = getConfig();
-        const binId = config.cloudBinId;
-        const headers = {
-            'X-Master-Key': apiKey,
-            'Content-Type': 'application/json'
-        };
-        
-        let resp, result;
-        if (binId) {
-            resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-                method: 'PUT', headers,
-                body: JSON.stringify(data)
-            });
-        } else {
-            resp = await fetch('https://api.jsonbin.io/v3/b', {
-                method: 'POST', headers,
-                body: JSON.stringify(data)
-            });
-        }
-        
-        if (!resp.ok) {
-            const err = await resp.text().catch(() => '');
-            throw new Error(`JSONBin ${resp.status}: ${err.substring(0, 200)}`);
-        }
-        result = await resp.json();
-        return result.metadata.id;
+    // ==================== 云端备份（JSONBin / Gitee / GitHub 三后端） ====================
+    // 统一出口：cloudBackup(data, cfgOverride?) / cloudFetch(cfgOverride?)
+    // cfgOverride 优先用调用方传入（设置弹窗里尚未保存的配置），否则读 getConfig()
+
+    // UTF-8 安全的 base64（浏览器 btoa 仅支持 Latin1，中文必须走此通道）
+    function utf8ToBase64(str) {
+        return btoa(unescape(encodeURIComponent(str)));
     }
-    
-    async function cloudFetch(apiKey, binId) {
-        if (!binId) throw new Error('请输入云端 Bin ID（首次备份成功后获得）');
-        
-        const resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-            headers: { 'X-Master-Key': apiKey }
-        });
-        if (!resp.ok) {
-            const err = await resp.text().catch(() => '');
-            throw new Error(`JSONBin ${resp.status}: ${err.substring(0, 200)}`);
+    function base64ToUtf8(b64) {
+        return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
+    }
+
+    // ---- JSONBin（原有） ----
+    async function jsonbinBackup(data, config) {
+        const binId = config.cloudBinId;
+        const headers = { 'X-Master-Key': config.cloudApiKey, 'Content-Type': 'application/json' };
+        let resp;
+        if (binId) {
+            resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, { method: 'PUT', headers, body: JSON.stringify(data) });
+        } else {
+            resp = await fetch('https://api.jsonbin.io/v3/b', { method: 'POST', headers, body: JSON.stringify(data) });
         }
+        if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`JSONBin ${resp.status}: ${err.substring(0, 200)}`); }
+        const result = await resp.json();
+        return result.metadata.id;   // 返回 binId 供后续拉取
+    }
+    async function jsonbinFetch(config) {
+        const binId = config.cloudBinId;
+        if (!binId) throw new Error('请先填写 JSONBin Bin ID（首次备份后获得）');
+        const resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, { headers: { 'X-Master-Key': config.cloudApiKey } });
+        if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`JSONBin ${resp.status}: ${err.substring(0, 200)}`); }
         const result = await resp.json();
         return result.record;
+    }
+
+    // ---- Gitee（私人仓，纯前端 Contents API 直连；无 branch 走默认分支） ----
+    async function giteeBackup(data, config) {
+        const { cloudRepo: repo, cloudPath: path, cloudToken: token } = config;
+        if (!token || !repo) throw new Error('请填写 Gitee 私人令牌与仓库(owner/repo)');
+        const content = utf8ToBase64(JSON.stringify(data, null, 2));
+        const url = `https://gitee.com/api/v5/repos/${repo}/contents/${path}`;
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        let sha = null;
+        const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (r.status === 404) { sha = null; }
+        else if (r.ok) { const j = await r.json(); sha = j.sha || null; }
+        else { const err = await r.text().catch(() => ''); throw new Error(`Gitee ${r.status}: ${err.substring(0, 200)}`); }
+        const method = sha ? 'PUT' : 'POST';
+        const body = sha
+            ? { content, message: 'investment-tracker backup update', sha }
+            : { content, message: 'investment-tracker backup init' };
+        const resp = await fetch(url, { method, headers, body: JSON.stringify(body) });
+        if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`Gitee ${resp.status}: ${err.substring(0, 200)}`); }
+        return path;
+    }
+    async function giteeFetch(config) {
+        const { cloudRepo: repo, cloudPath: path, cloudToken: token } = config;
+        if (!token || !repo) throw new Error('请填写 Gitee 私人令牌与仓库(owner/repo)');
+        const url = `https://gitee.com/api/v5/repos/${repo}/contents/${path}`;
+        const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (resp.status === 404) throw new Error('Gitee 仓库中暂无备份文件，请先备份一次');
+        if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`Gitee ${resp.status}: ${err.substring(0, 200)}`); }
+        const j = await resp.json();
+        return JSON.parse(base64ToUtf8(j.content || ''));
+    }
+
+    // ---- GitHub（私人仓，细粒度 PAT 仅授权该仓 Contents 读写） ----
+    async function githubBackup(data, config) {
+        const { cloudRepo: repo, cloudPath: path, cloudToken: token } = config;
+        if (!token || !repo) throw new Error('请填写 GitHub 私人令牌与仓库(owner/repo)');
+        const content = utf8ToBase64(JSON.stringify(data, null, 2));
+        const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        let sha = null;
+        const r = await fetch(url, { headers });
+        if (r.status === 404) { sha = null; }
+        else if (r.ok) { const j = await r.json(); sha = j.sha || null; }
+        else { const err = await r.text().catch(() => ''); throw new Error(`GitHub ${r.status}: ${err.substring(0, 200)}`); }
+        const body = sha
+            ? { message: 'investment-tracker backup update', content, sha }
+            : { message: 'investment-tracker backup init', content };
+        const resp = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
+        if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`GitHub ${resp.status}: ${err.substring(0, 200)}`); }
+        return path;
+    }
+    async function githubFetch(config) {
+        const { cloudRepo: repo, cloudPath: path, cloudToken: token } = config;
+        if (!token || !repo) throw new Error('请填写 GitHub 私人令牌与仓库(owner/repo)');
+        const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+        const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (resp.status === 404) throw new Error('GitHub 仓库中暂无备份文件，请先备份一次');
+        if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`GitHub ${resp.status}: ${err.substring(0, 200)}`); }
+        const j = await resp.json();
+        return JSON.parse(base64ToUtf8(j.content || ''));
+    }
+
+    // ---- 统一分发 ----
+    async function cloudBackup(data, cfgOverride) {
+        const config = cfgOverride || getConfig();
+        const provider = config.cloudProvider || 'jsonbin';
+        if (provider === 'gitee') return await giteeBackup(data, config);
+        if (provider === 'github') return await githubBackup(data, config);
+        return await jsonbinBackup(data, config);
+    }
+    async function cloudFetch(cfgOverride) {
+        const config = cfgOverride || getConfig();
+        const provider = config.cloudProvider || 'jsonbin';
+        if (provider === 'gitee') return await giteeFetch(config);
+        if (provider === 'github') return await githubFetch(config);
+        return await jsonbinFetch(config);
     }
     
     return {

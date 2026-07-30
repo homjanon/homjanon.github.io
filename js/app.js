@@ -57,6 +57,7 @@ const App = (function() {
         document.getElementById('btn-import').addEventListener('click', () => document.getElementById('import-file').click());
         document.getElementById('btn-cloud-backup').addEventListener('click', () => cloudBackup());
         document.getElementById('btn-cloud-import').addEventListener('click', () => cloudImport());
+        document.getElementById('config-cloud-provider').addEventListener('change', updateCloudFields);
         document.getElementById('config-clear-all').addEventListener('click', () => clearAllData());
         document.getElementById('import-file').addEventListener('change', (e) => {
             if (e.target.files[0]) importData(e.target.files[0]);
@@ -807,10 +808,26 @@ const App = (function() {
         document.getElementById('config-use-line1').checked = config.useLine1 === true;
         document.getElementById('config-use-line2').checked = config.useLine2 === true;
         document.getElementById('config-auto-sync').checked = config.autoSync === true;
+        document.getElementById('config-cloud-provider').value = config.cloudProvider || 'jsonbin';
         document.getElementById('config-cloud-apikey').value = config.cloudApiKey || '';
         document.getElementById('config-cloud-binid').value = config.cloudBinId || '';
+        document.getElementById('config-cloud-token').value = config.cloudToken || '';
+        document.getElementById('config-cloud-repo').value = config.cloudRepo || '';
+        document.getElementById('config-cloud-path').value = config.cloudPath || 'data/user-data.json';
+        updateCloudFields();
         
         showModal('modal-config');
+    }
+    
+    // 根据同步方式显隐对应字段
+    function updateCloudFields() {
+        const p = document.getElementById('config-cloud-provider').value;
+        const isJsonbin = p === 'jsonbin';
+        document.getElementById('grp-jsonbin').style.display = isJsonbin ? '' : 'none';
+        document.getElementById('grp-jsonbin2').style.display = isJsonbin ? '' : 'none';
+        document.getElementById('grp-token').style.display = isJsonbin ? 'none' : '';
+        document.getElementById('grp-repo').style.display = isJsonbin ? 'none' : '';
+        document.getElementById('grp-path').style.display = isJsonbin ? 'none' : '';
     }
     
     // 显示模态框
@@ -1031,10 +1048,14 @@ const App = (function() {
         const useLine2 = document.getElementById('config-use-line2').checked;
         const cloudApiKey = document.getElementById('config-cloud-apikey').value.trim();
         const cloudBinId = document.getElementById('config-cloud-binid').value.trim();
+        const cloudProvider = document.getElementById('config-cloud-provider').value;
+        const cloudToken = document.getElementById('config-cloud-token').value.trim();
+        const cloudRepo = document.getElementById('config-cloud-repo').value.trim();
+        const cloudPath = document.getElementById('config-cloud-path').value.trim() || 'data/user-data.json';
         const autoSync = document.getElementById('config-auto-sync').checked;
         
         const existing = StorageManager.getConfig();
-        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useLine1, useLine2, cloudApiKey, cloudBinId, autoSync };
+        const config = { ...existing, finnhubKey, biyingKey, corsProxy, demoMode, useLine1, useLine2, cloudApiKey, cloudBinId, cloudProvider, cloudToken, cloudRepo, cloudPath, autoSync };
         
         StorageManager.saveConfig(config);
         UIManager.showToast('配置保存成功', 'success');
@@ -1080,27 +1101,42 @@ const App = (function() {
         reader.readAsText(file);
     }
     
-    // 云端备份
+    // 云端备份（按 provider 走 JSONBin / Gitee / GitHub）
     async function cloudBackup() {
+        const provider = document.getElementById('config-cloud-provider').value;
         const apiKey = document.getElementById('config-cloud-apikey').value.trim();
-        if (!apiKey) { UIManager.showToast('请先填写 JSONBin API Key', 'error'); return; }
-        
+        const binId = document.getElementById('config-cloud-binid').value.trim();
+        const token = document.getElementById('config-cloud-token').value.trim();
+        const repo = document.getElementById('config-cloud-repo').value.trim();
+        const path = document.getElementById('config-cloud-path').value.trim() || 'data/user-data.json';
+
         const btn = document.getElementById('btn-cloud-backup');
         btn.disabled = true; btn.textContent = '备份中...';
-        
         try {
+            if (provider === 'jsonbin') {
+                if (!apiKey) { UIManager.showToast('请先填写 JSONBin API Key', 'error'); btn.disabled = false; btn.textContent = '☁️ 备份到云端'; return; }
+            } else {
+                if (!token) { UIManager.showToast(`请先填写 ${provider === 'gitee' ? 'Gitee' : 'GitHub'} 私人令牌`, 'error'); btn.disabled = false; btn.textContent = '☁️ 备份到云端'; return; }
+                if (!repo) { UIManager.showToast('请填写仓库(owner/repo)', 'error'); btn.disabled = false; btn.textContent = '☁️ 备份到云端'; return; }
+            }
             const raw = JSON.parse(StorageManager.exportData());
             const data = StorageManager.stripSecrets(raw);   // 上传前剥离 Key（本地不受影响）
-            const binId = await APIManager.cloudBackup(data, apiKey);
-            
+            const cfg = { ...StorageManager.getConfig(), cloudProvider: provider, cloudApiKey: apiKey, cloudBinId: binId, cloudToken: token, cloudRepo: repo, cloudPath: path };
+            const locator = await APIManager.cloudBackup(data, cfg);
+
             const config = StorageManager.getConfig();
-            config.cloudBinId = binId;
+            config.cloudProvider = provider;
             config.cloudApiKey = apiKey;
+            config.cloudToken = token;
+            config.cloudRepo = repo;
+            config.cloudPath = path;
+            if (provider === 'jsonbin') {
+                config.cloudBinId = locator;
+                document.getElementById('config-cloud-binid').value = locator;
+            }
             config.lastSyncTime = raw.syncTime;   // 记录本次同步时间，避免下次误判云端更新
             StorageManager.saveConfig(config);
-            
-            document.getElementById('config-cloud-binid').value = binId;
-            UIManager.showToast(`备份成功！BinID: ${binId.slice(0, 8)}...`, 'success');
+            UIManager.showToast('备份成功！', 'success');
         } catch (e) {
             console.error('云端备份失败:', e);
             UIManager.showToast(`备份失败: ${e.message}`, 'error');
@@ -1108,18 +1144,27 @@ const App = (function() {
         btn.disabled = false; btn.textContent = '☁️ 备份到云端';
     }
     
-    // 云端导入
+    // 云端导入（按 provider 走 JSONBin / Gitee / GitHub）
     async function cloudImport() {
+        const provider = document.getElementById('config-cloud-provider').value;
         const apiKey = document.getElementById('config-cloud-apikey').value.trim();
         const binId = document.getElementById('config-cloud-binid').value.trim();
-        if (!apiKey) { UIManager.showToast('请先填写 JSONBin API Key', 'error'); return; }
-        if (!binId) { UIManager.showToast('请填写 Bin ID（首次备份后获得）', 'error'); return; }
-        
+        const token = document.getElementById('config-cloud-token').value.trim();
+        const repo = document.getElementById('config-cloud-repo').value.trim();
+        const path = document.getElementById('config-cloud-path').value.trim() || 'data/user-data.json';
+
         const btn = document.getElementById('btn-cloud-import');
         btn.disabled = true; btn.textContent = '导入中...';
-        
         try {
-            const data = await APIManager.cloudFetch(apiKey, binId);
+            if (provider === 'jsonbin') {
+                if (!apiKey) { UIManager.showToast('请先填写 JSONBin API Key', 'error'); btn.disabled = false; btn.textContent = '📥 从云端导入'; return; }
+                if (!binId) { UIManager.showToast('请填写 Bin ID（首次备份后获得）', 'error'); btn.disabled = false; btn.textContent = '📥 从云端导入'; return; }
+            } else {
+                if (!token) { UIManager.showToast(`请先填写 ${provider === 'gitee' ? 'Gitee' : 'GitHub'} 私人令牌`, 'error'); btn.disabled = false; btn.textContent = '📥 从云端导入'; return; }
+                if (!repo) { UIManager.showToast('请填写仓库(owner/repo)', 'error'); btn.disabled = false; btn.textContent = '📥 从云端导入'; return; }
+            }
+            const cfg = { ...StorageManager.getConfig(), cloudProvider: provider, cloudApiKey: apiKey, cloudBinId: binId, cloudToken: token, cloudRepo: repo, cloudPath: path };
+            const data = await APIManager.cloudFetch(cfg);
             if (!data.assets || !Array.isArray(data.assets)) {
                 throw new Error('云端数据格式不正确');
             }
@@ -1140,6 +1185,12 @@ const App = (function() {
             if (success) {
                 // 对齐本次同步时间，避免打开时重复弹"云端有更新"
                 const c = StorageManager.getConfig();
+                c.cloudProvider = provider;
+                c.cloudApiKey = apiKey;
+                c.cloudToken = token;
+                c.cloudRepo = repo;
+                c.cloudPath = path;
+                if (provider === 'jsonbin') c.cloudBinId = binId;
                 c.lastSyncTime = data.syncTime || Date.now();
                 StorageManager.saveConfig(c);
                 UIManager.showToast(`导入成功：${data.assets.length} 个资产`, 'success');
@@ -1165,7 +1216,10 @@ const App = (function() {
     function scheduleAutoUpload() {
         if (_suppressAutoSync) return;
         const config = StorageManager.getConfig();
-        if (!config.autoSync || !config.cloudApiKey) return;  // 未开启或未配 Key 直接跳过
+        if (!config.autoSync) return;
+        const provider = config.cloudProvider || 'jsonbin';
+        if (provider === 'jsonbin') { if (!config.cloudApiKey) return; }
+        else { if (!config.cloudToken || !config.cloudRepo) return; }
         if (_autoUploadTimer) clearTimeout(_autoUploadTimer);
         _autoUploadTimer = setTimeout(doAutoUpload, 3000);
     }
@@ -1173,14 +1227,17 @@ const App = (function() {
     // 执行自动上传（复用 cloudBackup，上传前剥离密钥）
     async function doAutoUpload() {
         const config = StorageManager.getConfig();
-        if (!config.autoSync || !config.cloudApiKey) return;
+        if (!config.autoSync) return;
+        const provider = config.cloudProvider || 'jsonbin';
+        if (provider === 'jsonbin') { if (!config.cloudApiKey) return; }
+        else { if (!config.cloudToken || !config.cloudRepo) return; }
         try {
             const raw = JSON.parse(StorageManager.exportData());
             const safe = StorageManager.stripSecrets(raw);   // 剥离 Key
-            const binId = await APIManager.cloudBackup(safe, config.cloudApiKey);
-            // 回填 binId + 记录本次同步时间（对齐云端 syncTime，避免下次误判云端更新）
+            const binId = await APIManager.cloudBackup(safe);
+            // 回填 binId（仅 JSONBin 需要）+ 记录本次同步时间（对齐云端 syncTime，避免下次误判云端更新）
             const c = StorageManager.getConfig();
-            c.cloudBinId = binId;
+            if (provider === 'jsonbin') c.cloudBinId = binId;
             c.lastSyncTime = raw.syncTime;
             StorageManager.saveConfig(c);
             UIManager.showToast('☁️ 已自动同步到云端', 'success');
@@ -1193,9 +1250,12 @@ const App = (function() {
     // 打开页面时检查云端是否更新（比对 syncTime，需确认后拉取）
     async function checkCloudUpdate() {
         const config = StorageManager.getConfig();
-        if (!config.autoSync || !config.cloudApiKey || !config.cloudBinId) return;
+        if (!config.autoSync) return;
+        const provider = config.cloudProvider || 'jsonbin';
+        if (provider === 'jsonbin') { if (!config.cloudApiKey || !config.cloudBinId) return; }
+        else { if (!config.cloudToken || !config.cloudRepo) return; }
         try {
-            const data = await APIManager.cloudFetch(config.cloudApiKey, config.cloudBinId);
+            const data = await APIManager.cloudFetch();
             if (!data || !data.assets || !Array.isArray(data.assets)) return;
             const remoteTime = data.syncTime || 0;
             const localTime = config.lastSyncTime || 0;
