@@ -118,7 +118,7 @@ export default {
   - GitHub 私人令牌：用**细粒度 PAT**，仅授权那一个私人仓库的 `Contents` 读写，安全性最佳。
   - 中文 UTF-8 已处理（`btoa(unescape(encodeURIComponent(...)))`），持仓中文名不会乱码。
 - **首次使用**：选好方式 → 填令牌/仓库/路径 → 点「☁️ 备份到云端」（路径默认 `data/user-data.json`，父目录会自动创建）→ 之后「📥 从云端导入」即可跨设备恢复。
-- **Gitee 重复备份会覆盖**：Gitee 的 Contents API 机制特殊（不存在文件也返回 200 空 body、且对已存在文件误用 POST 会报 `文件已存在`）。`giteeBackup` 已做健壮处理——每次都先取 `sha`，有则 `PUT` 覆盖、无则 `POST` 新建；若仍撞上「文件已存在 / sha missing」则自动重新取 `sha` 再 `PUT` 一次，**确保每次点备份都覆盖而非报错**（与 GitHub 始终覆盖行为一致）。
+- **Gitee 重复备份会覆盖（已彻底修 400）**：Gitee 的 Contents API 机制特殊（不存在文件也返回 200 空 body、且对已存在文件误用 POST 会报 `文件名已存在`、PUT 时 sha 过期会报 `Blob SHA does not match`，均为 400）。`giteeBackup` 现做健壮处理——首轮取 `sha` 有则 `PUT` 覆盖、无则 `POST` 新建；**任一写失败（400 文件名已存在 / 400 Blob SHA does not match / 422 等冲突）一律重新拉最新 `sha` 再 `PUT` 一次**（有 sha 则覆盖、无 sha 则新建），与 GitHub「永远 PUT、始终覆盖」行为对齐，**确保每次点备份都成功而非报错**。导入 `giteeFetch` 同步加固：Gitee 偶发 200 空 body 时重试一次，404/无内容错误提示改为指引「检查仓库/路径是否正确」。
 
 > 🔒 **安全**：上传云端前会自动**剥离所有 API Key**（Finnhub / 必盈 / JSONBin / 云同步令牌 `cloudToken`），本地保留正常使用，密钥不会驻留云端。云同步令牌仅存于你浏览器 localStorage，不上传。
 
