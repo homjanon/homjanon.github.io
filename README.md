@@ -113,12 +113,18 @@ export default {
 | **Gitee 私人仓** | 你自己的 Gitee 私人仓库 `data/user-data.json` | 私人令牌 + 仓库(owner/repo) | 国内访问最顺，纯前端直连 |
 | **GitHub 私人仓** | 你自己的 GitHub 私人仓库 `data/user-data.json` | 细粒度 PAT + 仓库(owner/repo) | 最小权限（PAT 可限定单仓），CORS 稳 |
 
-- **Gitee / GitHub 原理**：纯浏览器直连对应平台的 Contents API（`GET` 拿 `sha` → 有则 `PUT` 更新、无则 `POST` 创建），把 `user-data.json` 写进你指定的私人仓库，**无需任何服务器/代理**。
+- **同步实现原理（Gitee / GitHub 通用）**：纯浏览器**直连**对应平台的 **Contents API**，**无需任何服务器或代理**，把本地数据写成 `user-data.json` 存进你自己的私人仓库。完整数据流：
+  1. **序列化**：`exportData()` 导出 `{ assets, cash, dividends, syncTime, config }`；上传前 `stripSecrets()` **清空所有密钥**（Finnhub / 必盈 / JSONBin / 云同步令牌），本地保留正常使用，密钥绝不驻留云端。
+  2. **UTF-8 编码**：`JSON.stringify` 后做 **UTF-8 安全 base64**（`btoa(unescape(encodeURIComponent(str)))`），让持仓的中文名 / 备注不乱码。
+  3. **写文件（备份）**：`GET {repo}/contents/{path}` 取当前文件 `sha` → 有 `sha` 则 `PUT` 覆盖、无则 `POST` 新建；请求体 `{ message, content(=base64), sha? }`。
+  4. **读文件（导入）**：`GET {path}` 取 base64 `content` → 解码 → `JSON.parse` 还原为本地数据。
   - Gitee 私人令牌：https://gitee.com/profile/personal_access_tokens → 勾 `projects`（项目读写）权限即可；Gitee 令牌为**账号级**（非单仓），建议短有效期或专用小号。
   - GitHub 私人令牌：用**细粒度 PAT**，仅授权那一个私人仓库的 `Contents` 读写，安全性最佳。
-  - 中文 UTF-8 已处理（`btoa(unescape(encodeURIComponent(...)))`），持仓中文名不会乱码。
 - **首次使用**：选好方式 → 填令牌/仓库/路径 → 点「☁️ 备份到云端」（路径默认 `data/user-data.json`，父目录会自动创建）→ 之后「📥 从云端导入」即可跨设备恢复。
-- **Gitee 重复备份会覆盖（已彻底修 400）**：Gitee 的 Contents API 机制特殊（不存在文件也返回 200 空 body、且对已存在文件误用 POST 会报 `文件名已存在`、PUT 时 sha 过期会报 `Blob SHA does not match`，均为 400）。`giteeBackup` 现做健壮处理——首轮取 `sha` 有则 `PUT` 覆盖、无则 `POST` 新建；**任一写失败（400 文件名已存在 / 400 Blob SHA does not match / 422 等冲突）一律重新拉最新 `sha` 再 `PUT` 一次**（有 sha 则覆盖、无 sha 则新建），与 GitHub「永远 PUT、始终覆盖」行为对齐，**确保每次点备份都成功而非报错**。导入 `giteeFetch` 同步加固：Gitee 偶发 200 空 body 时重试一次，404/无内容错误提示改为指引「检查仓库/路径是否正确」。
+- **Gitee 同步实现细节（已彻底修 400）**：Gitee 的 Contents API 与 GitHub 略有差异，代码做了针对性健壮处理：
+  - **备份 `giteeBackup`**：先 `GET` 取当前文件 `sha` → 有则 `PUT` 覆盖、无则 `POST` 新建。Gitee 有两个特殊坑：① 对**已存在**文件误用 `POST` 会报 `400 文件名已存在`；② `PUT` 时带的 `sha` 与云端当前版本不符会报 `400 Blob SHA does not match`（文件被别处改过/缓存拿到旧 sha 时易触发）。**兜底机制**：任意写失败只要是冲突类（`400 文件名已存在` / `400 Blob SHA does not match` / `422` 等），一律**重新 `GET` 拉取最新 `sha` 再 `PUT` 一次**（有最新 sha 则覆盖、连文件都没了则 `POST` 新建），与 GitHub「永远 PUT、始终覆盖」行为对齐，**确保每次点备份都成功而非报错**。`401/403` 属鉴权错误，不重试、直接报错提示检查令牌。
+  - **导入 `giteeFetch`**：`GET` 取文件 → base64 解码 → 解析。Gitee 偶发返回 `200` 但**空 body（无 content）**，故加了**一次重试**；若仍无内容，错误提示从含糊的「暂无备份文件」改为明确指引「检查仓库/路径是否正确（应类似 `data/user-data.json`）」，避免误判。
+  - **为什么能像 GitHub 一样稳**：上述 400 是纯逻辑 bug（漏匹配错误文案 + 没做重取 sha 兜底），并非平台硬伤。补齐后 Gitee 与 GitHub 在「备份必覆盖、导入必可读」上效果等价，只是保留了你国内访问更顺的速度优势。
 
 > 🔒 **安全**：上传云端前会自动**剥离所有 API Key**（Finnhub / 必盈 / JSONBin / 云同步令牌 `cloudToken`），本地保留正常使用，密钥不会驻留云端。云同步令牌仅存于你浏览器 localStorage，不上传。
 
