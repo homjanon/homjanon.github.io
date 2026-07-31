@@ -10,7 +10,7 @@
     <meta http-equiv="Expires" content="0">
     <link rel="manifest" href="manifest.json">
     <title>个人投资管理系统</title>
-    <link rel="stylesheet" href="css/style.css?v=20260731a">
+    <link rel="stylesheet" href="css/style.css?v=20260731b">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -398,7 +398,7 @@
                             <input type="checkbox" id="config-auto-sync">
                             ☁️ 自动同步（持仓变更后自动上传，打开时检查云端更新）
                         </label>
-                        <small class="form-hint" style="margin-left:24px">默认关闭。开启后持仓改动 3 秒自动上传（已剥离所有 Key）；打开页面若检测到云端更新会询问是否拉取，不会静默覆盖。</small>
+                        <small class="form-hint" style="margin-left:24px">默认关闭。开启后持仓改动 30 秒自动静默上传（已剥离所有 Key，成功不弹窗）；打开页面若检测到云端更新会询问是否拉取，不会静默覆盖。</small>
                     </div>
                     <div class="form-actions" style="margin-bottom:12px">
                         <button type="button" class="btn btn-primary" id="btn-cloud-backup">☁️ 备份到云端</button>
@@ -570,9 +570,9 @@
         </div>
     </div>
 
-    <script src="js/storage.js?v=20260731a"></script>
-    <script src="js/api.js?v=20260731a"></script>
-    <script src="js/ui.js?v=20260731a"></script>
-    <script src="js/app.js?v=20260731a"></script>
+    <script src="js/storage.js?v=20260731b"></script>
+    <script src="js/api.js?v=20260731b"></script>
+    <script src="js/ui.js?v=20260731b"></script>
+    <script src="js/app.js?v=20260731b"></script>
 </body>
 </html>

@@ -1212,7 +1212,7 @@ const App = (function() {
     let _autoUploadTimer = null;      // debounce 定时器
     let _suppressAutoSync = false;    // 拉取/导入期间抑制自动上传，防回环
     
-    // 数据变更后触发：debounce 3 秒合并上传一次
+    // 数据变更后触发：debounce 30 秒合并上传一次（静默，不弹窗）
     function scheduleAutoUpload() {
         if (_suppressAutoSync) return;
         const config = StorageManager.getConfig();
@@ -1221,7 +1221,7 @@ const App = (function() {
         if (provider === 'jsonbin') { if (!config.cloudApiKey) return; }
         else { if (!config.cloudToken || !config.cloudRepo) return; }
         if (_autoUploadTimer) clearTimeout(_autoUploadTimer);
-        _autoUploadTimer = setTimeout(doAutoUpload, 3000);
+        _autoUploadTimer = setTimeout(doAutoUpload, 30000);
     }
     
     // 执行自动上传（复用 cloudBackup，上传前剥离密钥）
@@ -1240,7 +1240,7 @@ const App = (function() {
             if (provider === 'jsonbin') c.cloudBinId = binId;
             c.lastSyncTime = raw.syncTime;
             StorageManager.saveConfig(c);
-            UIManager.showToast('☁️ 已自动同步到云端', 'success');
+            // 静默模式：成功不弹窗，仅在失败时提示（见 catch）
         } catch (e) {
             console.warn('自动同步失败:', e.message);
             UIManager.showToast(`自动同步失败: ${e.message}`, 'error');
