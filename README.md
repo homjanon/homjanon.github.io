@@ -121,10 +121,11 @@ export default {
   - Gitee 私人令牌：https://gitee.com/profile/personal_access_tokens → 勾 `projects`（项目读写）权限即可；Gitee 令牌为**账号级**（非单仓），建议短有效期或专用小号。
   - GitHub 私人令牌：用**细粒度 PAT**，仅授权那一个私人仓库的 `Contents` 读写，安全性最佳。
 - **首次使用**：选好方式 → 填令牌/仓库/路径 → 点「☁️ 备份到云端」（路径默认 `data/user-data.json`，父目录会自动创建）→ 之后「📥 从云端导入」即可跨设备恢复。
-- **Gitee 同步实现细节（已彻底修 400）**：Gitee 的 Contents API 与 GitHub 略有差异，代码做了针对性健壮处理：
-  - **备份 `giteeBackup`**：先 `GET` 取当前文件 `sha` → 有则 `PUT` 覆盖、无则 `POST` 新建。Gitee 有两个特殊坑：① 对**已存在**文件误用 `POST` 会报 `400 文件名已存在`；② `PUT` 时带的 `sha` 与云端当前版本不符会报 `400 Blob SHA does not match`（文件被别处改过/缓存拿到旧 sha 时易触发）。**兜底机制**：任意写失败只要是冲突类（`400 文件名已存在` / `400 Blob SHA does not match` / `422` 等），一律**重新 `GET` 拉取最新 `sha` 再 `PUT` 一次**（有最新 sha 则覆盖、连文件都没了则 `POST` 新建），与 GitHub「永远 PUT、始终覆盖」行为对齐，**确保每次点备份都成功而非报错**。`401/403` 属鉴权错误，不重试、直接报错提示检查令牌。
-  - **导入 `giteeFetch`**：`GET` 取文件 → base64 解码 → 解析。Gitee 偶发返回 `200` 但**空 body（无 content）**，故加了**一次重试**；若仍无内容，错误提示从含糊的「暂无备份文件」改为明确指引「检查仓库/路径是否正确（应类似 `data/user-data.json`）」，避免误判。
-  - **为什么能像 GitHub 一样稳**：上述 400 是纯逻辑 bug（漏匹配错误文案 + 没做重取 sha 兜底），并非平台硬伤。补齐后 Gitee 与 GitHub 在「备份必覆盖、导入必可读」上效果等价，只是保留了你国内访问更顺的速度优势。
+- **Gitee 同步实现细节（2026-08-01 强化，对齐 jingjishi 9.1/9.3）**：Gitee 的 Contents API 与 GitHub 略有差异，代码做了两层健壮处理：
+  - **鉴权方式（关键）**：`GET` 取 `sha` / 读文件**优先用 `?access_token=` 查询串**（简单请求、免 CORS 预检、最稳），若返回 `401/403` 才自动降级 `Authorization: Bearer` 头重试；写操作 body 里**再带一份 `access_token`**（与 `Bearer` 头双层保险）。之所以要改：Bearer 头在你的令牌类型下常被 Gitee 拒（`401`），进而 `getSha()` 取不到 sha → 误判"文件不存在" → 走 `POST` 撞已存在文件 → `400 文件名已存在`。改查询串即根除。
+  - **SHA 冲突自动重试**：`giteeBackup` / `githubBackup` 统一采用 **`for` 循环最多 3 次**——每次重新 `GET` 最新 `sha` → 有则 `PUT` 覆盖、无则 `POST` 新建 → 遇 `400/409/422` 视为冲突 `continue` 重拉 `sha` 再写；`401/403` 鉴权问题直接抛错、其他错误直接抛、3 次仍冲突才最终报错。**不再有"第一次成功、第二次必 400 / 409"的窘境**。
+  - **导入 `giteeFetch`**：`GET` 取文件 → base64 解码 → 解析，同样查询串优先 + Bearer 降级。Gitee 偶发返回 `200` 但**空 body（`[]` 或 无 `content`）**，故加了**一次重试**；若仍无内容，错误提示明确指引「检查仓库/路径是否正确（应类似 `data/user-data.json`）」，避免误判成"暂无备份文件"。
+  - **为什么能像 GitHub 一样稳**：核心坑是「Bearer 头被拒 + SHA 过期冲突」两件事，现已分别用「查询串鉴权」和「3 次重拉 SHA 重试」解决。Gitee 与 GitHub 在「备份必覆盖、导入必可读」上效果等价，且保留你国内访问更顺的速度优势。
 
 > 🔒 **安全**：上传云端前会自动**剥离所有 API Key**（Finnhub / 必盈 / JSONBin / 云同步令牌 `cloudToken`），本地保留正常使用，密钥不会驻留云端。云同步令牌仅存于你浏览器 localStorage，不上传。
 
