@@ -2,7 +2,15 @@
 
 
 
+
+
+
+
  * API调用封装模块
+
+
+
+
 
 
 
@@ -10,7 +18,15 @@
 
 
 
+
+
+
+
  * - A股：必盈API (biyingapi.com)
+
+
+
+
 
 
 
@@ -18,7 +34,15 @@
 
 
 
+
+
+
+
  * - 美股：Finnhub API (finnhub.io)
+
+
+
+
 
 
 
@@ -30,7 +54,19 @@
 
 
 
+
+
+
+
+
+
+
+
 const APIManager = (function() {
+
+
+
+
 
 
 
@@ -38,7 +74,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         finnhub: 'https://finnhub.io/api/v1',
+
+
+
+
 
 
 
@@ -46,7 +90,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         yahooChart: 'https://query1.finance.yahoo.com/v8/finance/chart',
+
+
+
+
 
 
 
@@ -54,11 +106,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     };
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -66,7 +130,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     const DEFAULT_PROXIES = [
+
+
+
+
 
 
 
@@ -74,7 +146,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         'https://api.allorigins.win/raw?url=',
+
+
+
+
 
 
 
@@ -82,11 +162,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     ];
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -94,7 +186,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return StorageManager.getConfig();
+
+
+
+
 
 
 
@@ -102,7 +202,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -110,11 +218,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function getProxyUrl() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -122,11 +242,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -134,11 +266,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function getProxyList() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -146,7 +290,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (config.corsProxy) list.push(config.corsProxy);
+
+
+
+
 
 
 
@@ -154,7 +306,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return list;
+
+
+
+
 
 
 
@@ -162,7 +322,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -170,7 +338,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function isCORSError(error) {
+
+
+
+
 
 
 
@@ -178,7 +354,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const msg = error.message.toLowerCase();
+
+
+
+
 
 
 
@@ -186,7 +370,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                msg.includes('networkerror') ||
+
+
+
+
 
 
 
@@ -194,7 +386,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                msg.includes('typeerror');
+
+
+
+
 
 
 
@@ -202,7 +402,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -210,7 +418,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function proxyURL(proxy, url) {
+
+
+
+
 
 
 
@@ -218,7 +434,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (proxy.includes('codetabs.com') || proxy.includes('allorigins.win')
+
+
+
+
 
 
 
@@ -226,11 +450,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return proxy + encodeURIComponent(url);
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -238,7 +474,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (proxy.endsWith('/')) proxy = proxy.slice(0, -1);
+
+
+
+
 
 
 
@@ -246,11 +490,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -258,45 +514,91 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     // 跨仓数据三级加速：jsdelivr CDN → 用户CORS代理 → raw直连（国内直连 GitHub 常超时）
+
+
 
     const GH_CROSS = {
 
+
+
         xxfi: 'https://raw.githubusercontent.com/homjanon/xiaoxu-fear/main/output/xxfi_report.json',
+
+
 
         cmb:  'https://raw.githubusercontent.com/homjanon/cmb-tracker/main/output/cmb_report.json',
 
+
+
         qiuge:'https://raw.githubusercontent.com/homjanon/xiaoxu-fear/main/output/qiuge_report.json'
+
+
 
     };
 
+
+
     const GH_RAW_OF = url => url.replace('https://raw.githubusercontent.com/homjanon/', 'https://cdn.jsdelivr.net/gh/homjanon/').replace('/main/', '@main/');
 
+
+
     async function fetchCrossRepo(id) {
+
         const raw = GH_CROSS[id];
+
         // ① 用户CORS代理（自建无缓存，保实时）
+
         try {
+
             const proxies = getProxyList();
+
             for (const p of proxies) {
+
                 try {
+
                     const r = await fetch(proxyURL(p, raw));
+
                     if (r.ok) return await r.json();
+
                 } catch(e) {}
+
             }
+
         } catch(e) {}
+
         // ② raw 直连兜底（无缓存）
+
         try {
+
             return await fetchAPI(raw);
+
         } catch(e) {}
+
         // ③ jsdelivr CDN 最后兜底（有 12h 缓存，仅当前两者都挂时用，宁旧勿无）
+
         try {
+
             const r = await fetch(GH_RAW_OF(raw));
+
             if (r.ok) return await r.json();
+
         } catch(e) {}
+
         throw new Error('跨仓数据全部源失败: ' + id);
+
     }
 
+
+
     async function fetchAPI(url) {
+
+
+
+
 
 
 
@@ -304,7 +606,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const base = hash >= 0 ? url.slice(0, hash) : url;
+
+
+
+
 
 
 
@@ -312,11 +622,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const cacheUrl = base.includes('?') ? `${base}&_=${Date.now()}${tail}` : `${base}?_=${Date.now()}${tail}`;
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -324,7 +646,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (!response.ok) {
+
+
+
+
 
 
 
@@ -332,11 +662,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -344,11 +686,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         } catch (error) {
 
 
 
+
+
+
+
             if (isCORSError(error)) {
+
+
+
+
 
 
 
@@ -356,7 +710,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return await fetchAPIviaProxy(cacheUrl);
+
+
+
+
 
 
 
@@ -364,7 +726,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             throw error;
+
+
+
+
 
 
 
@@ -372,11 +742,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -384,7 +766,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function fetchAPIviaProxy(url) {
+
+
+
+
 
 
 
@@ -392,7 +782,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         let lastError = null;
+
+
+
+
 
 
 
@@ -400,7 +798,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         for (const proxy of proxies) {
+
+
+
+
 
 
 
@@ -408,7 +814,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const proxyUrl = proxyURL(proxy, url);
+
+
+
+
 
 
 
@@ -416,11 +830,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const response = await fetch(proxyUrl);
 
 
 
+
+
+
+
                 if (!response.ok) {
+
+
+
+
 
 
 
@@ -428,11 +854,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     throw new Error(`代理 HTTP ${response.status}: ${text}`);
 
 
 
+
+
+
+
                 }
+
+
+
+
 
 
 
@@ -440,7 +878,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -448,7 +894,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (proxy.includes('codetabs.com')) {
+
+
+
+
 
 
 
@@ -456,7 +910,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                         try {
+
+
+
+
 
 
 
@@ -464,7 +926,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                         } catch (e) {
+
+
+
+
 
 
 
@@ -472,7 +942,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                             return result.contents;
+
+
+
+
 
 
 
@@ -480,7 +958,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     }
+
+
+
+
 
 
 
@@ -488,7 +974,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 }
+
+
+
+
 
 
 
@@ -496,11 +990,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return result;
 
 
 
+
+
+
+
             } catch (e) {
+
+
+
+
 
 
 
@@ -508,7 +1014,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 lastError = e;
+
+
+
+
 
 
 
@@ -516,11 +1030,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -528,7 +1054,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             `建议：1) 在设置中更换CORS代理URL 2) 自行部署Cloudflare Worker代理（见README）`);
+
+
+
+
 
 
 
@@ -536,7 +1070,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -544,11 +1086,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function fetchText(url) {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -556,7 +1110,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+
+
+
 
 
 
@@ -564,7 +1126,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         } catch (error) {
+
+
+
+
 
 
 
@@ -572,7 +1142,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 console.log('直接调用失败（CORS），尝试通过代理获取文本...');
+
+
+
+
 
 
 
@@ -580,7 +1158,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -588,7 +1174,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -596,7 +1190,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -604,7 +1206,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const proxies = getProxyList();
+
+
+
+
 
 
 
@@ -612,7 +1222,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -620,7 +1238,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -628,7 +1254,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const response = await fetch(proxyUrl);
+
+
+
+
 
 
 
@@ -636,11 +1270,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     throw new Error(`Proxy HTTP ${response.status}`);
 
 
 
+
+
+
+
                 }
+
+
+
+
 
 
 
@@ -648,7 +1294,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -656,7 +1310,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (proxy.includes('codetabs.com')) {
+
+
+
+
 
 
 
@@ -664,7 +1326,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                         const data = JSON.parse(text);
+
+
+
+
 
 
 
@@ -672,7 +1342,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     } catch (e) {
+
+
+
+
 
 
 
@@ -680,7 +1358,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     }
+
+
+
+
 
 
 
@@ -688,11 +1374,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return text;
 
 
 
+
+
+
+
             } catch (e) {
+
+
+
+
 
 
 
@@ -700,7 +1398,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 lastError = e;
+
+
+
+
 
 
 
@@ -708,11 +1414,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -720,11 +1438,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -732,7 +1462,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function fetchGBK(url) {
+
+
+
+
 
 
 
@@ -740,7 +1478,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+
+
+
 
 
 
@@ -748,7 +1494,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const decoder = new TextDecoder('gbk');
+
+
+
+
 
 
 
@@ -756,11 +1510,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -768,7 +1534,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         // 通过代理获取GBK文本 — 代理返回的可能仍是GBK字节
+
+
+
+
 
 
 
@@ -776,7 +1550,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const proxies = getProxyList();
+
+
+
+
 
 
 
@@ -784,7 +1566,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         for (const proxy of proxies) {
+
+
+
+
 
 
 
@@ -792,7 +1582,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const pUrl = proxyURL(proxy, url);
+
+
+
+
 
 
 
@@ -800,7 +1598,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+
+
+
+
 
 
 
@@ -808,7 +1614,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const decoder = new TextDecoder('gbk');
+
+
+
+
 
 
 
@@ -816,7 +1630,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (proxy.includes('codetabs.com')) {
+
+
+
+
 
 
 
@@ -824,7 +1646,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                         const data = JSON.parse(text);
+
+
+
+
 
 
 
@@ -832,7 +1662,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     } catch (e) {}
+
+
+
+
 
 
 
@@ -840,7 +1678,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return text;
+
+
+
+
 
 
 
@@ -848,7 +1694,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 lastError = e;
+
+
+
+
 
 
 
@@ -856,7 +1710,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -864,11 +1726,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -876,7 +1750,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -884,7 +1766,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -892,7 +1782,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -900,7 +1798,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const data = await fetchAPI(url);
+
+
+
+
 
 
 
@@ -908,7 +1814,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!data) throw new Error('返回数据为空');
+
+
+
+
 
 
 
@@ -916,7 +1830,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -924,7 +1846,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return {
+
+
+
+
 
 
 
@@ -932,7 +1862,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             high: data.h || price, low: data.l || price,
+
+
+
+
 
 
 
@@ -940,7 +1878,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             timestamp: data.t ? data.t * 1000 : Date.now()
+
+
+
+
 
 
 
@@ -948,11 +1894,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -960,7 +1918,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -968,7 +1934,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -976,11 +1950,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try {
 
 
 
+
+
+
+
             const data = await fetchAPI(url);
+
+
+
+
 
 
 
@@ -988,11 +1974,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return { name: symbol.toUpperCase(), ticker: symbol };
 
 
 
+
+
+
+
         } catch (e) {
+
+
+
+
 
 
 
@@ -1000,7 +1998,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return { name: symbol.toUpperCase(), ticker: symbol };
+
+
+
+
 
 
 
@@ -1008,11 +2014,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1020,7 +2038,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1028,7 +2054,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function normHK(code) {
+
+
+
+
 
 
 
@@ -1036,11 +2070,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1048,7 +2094,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function getFinnhubHKQuote(code) {
+
+
+
+
 
 
 
@@ -1056,7 +2110,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!config.finnhubKey) throw new Error('未配置Finnhub API Key');
+
+
+
+
 
 
 
@@ -1064,7 +2126,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const symbol = `${normHK(code).padStart(4, '0')}.HK`;
+
+
+
+
 
 
 
@@ -1072,11 +2142,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const data = await fetchAPI(url);
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1084,11 +2166,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (data.c === 0 && data.pc === 0) throw new Error(`未找到港股 ${code}，可能Finnhub免费套餐不覆盖该市场`);
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1096,7 +2190,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return {
+
+
+
+
 
 
 
@@ -1104,7 +2206,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             high: data.h || price, low: data.l || price,
+
+
+
+
 
 
 
@@ -1112,7 +2222,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             timestamp: data.t ? data.t * 1000 : Date.now()
+
+
+
+
 
 
 
@@ -1120,11 +2238,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1132,7 +2262,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -1140,7 +2278,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1148,7 +2294,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const url = `${API_BASE.finnhub}/stock/profile2?symbol=${symbol}&token=${config.finnhubKey}`;
+
+
+
+
 
 
 
@@ -1156,7 +2310,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const data = await fetchAPI(url);
+
+
+
+
 
 
 
@@ -1164,11 +2326,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return { name: code, code };
 
 
 
+
+
+
+
         } catch (e) {
+
+
+
+
 
 
 
@@ -1176,7 +2350,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return { name: code, code };
+
+
+
+
 
 
 
@@ -1184,11 +2366,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1196,7 +2390,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1204,7 +2406,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -1212,7 +2422,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1220,11 +2438,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const data = await fetchAPI(url);
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1232,7 +2462,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return {
+
+
+
+
 
 
 
@@ -1240,7 +2478,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             change: data.ud || (data.p - data.yc),
+
+
+
+
 
 
 
@@ -1248,7 +2494,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             open: data.o || data.p, previousClose: data.yc || data.p,
+
+
+
+
 
 
 
@@ -1256,7 +2510,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             timestamp: data.t ? new Date(data.t).getTime() : Date.now()
+
+
+
+
 
 
 
@@ -1264,11 +2526,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1276,7 +2550,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -1284,7 +2566,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1292,7 +2582,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const url = `${API_BASE.biying}/hsstock/instrument/${code}.${market}/${config.biyingKey}`;
+
+
+
+
 
 
 
@@ -1300,7 +2598,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const data = await fetchAPI(url);
+
+
+
+
 
 
 
@@ -1308,7 +2614,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         } catch (e) {
+
+
+
+
 
 
 
@@ -1316,7 +2630,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return { name: code, code };
+
+
+
+
 
 
 
@@ -1324,11 +2646,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1336,11 +2670,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function getBiyingHKStockQuote(code) {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -1348,7 +2694,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const padded = normHK(code).padStart(5, '0');
+
+
+
+
 
 
 
@@ -1356,7 +2710,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const data = await fetchAPI(url);
+
+
+
+
 
 
 
@@ -1364,7 +2726,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return {
+
+
+
+
 
 
 
@@ -1372,7 +2742,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             change: data.ud || (data.p - data.yc),
+
+
+
+
 
 
 
@@ -1380,7 +2758,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             open: data.o || data.p, previousClose: data.yc || data.p,
+
+
+
+
 
 
 
@@ -1388,7 +2774,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         };
+
+
+
+
 
 
 
@@ -1396,7 +2790,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1404,7 +2806,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -1412,7 +2822,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -1420,11 +2838,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const url = `${API_BASE.biying}/hk/sszjmx/${padded}/${config.biyingKey}`;
 
 
 
+
+
+
+
             const data = await fetchAPI(url);
+
+
+
+
 
 
 
@@ -1432,7 +2862,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         } catch (e) {
+
+
+
+
 
 
 
@@ -1440,7 +2878,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return { name: code, code };
+
+
+
+
 
 
 
@@ -1448,11 +2894,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1460,7 +2918,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1468,11 +2934,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const paddedCode = normHK(code).padStart(4, '0');
 
 
 
+
+
+
+
         const symbol = `${paddedCode}.HK`;
+
+
+
+
 
 
 
@@ -1480,7 +2958,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1488,7 +2974,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1496,7 +2990,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!result || !result.meta) {
+
+
+
+
 
 
 
@@ -1504,11 +3006,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1516,7 +3030,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const price = meta.regularMarketPrice;
+
+
+
+
 
 
 
@@ -1524,11 +3046,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
 
 
 
+
+
+
+
         return {
+
+
+
+
 
 
 
@@ -1536,7 +3070,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             change: meta.regularMarketPrice - meta.previousClose || 0,
+
+
+
+
 
 
 
@@ -1544,7 +3086,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             high: meta.regularMarketDayHigh || price,
+
+
+
+
 
 
 
@@ -1552,7 +3102,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             open: meta.chartPreviousClose || price,
+
+
+
+
 
 
 
@@ -1560,7 +3118,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             volume: meta.regularMarketVolume || 0,
+
+
+
+
 
 
 
@@ -1568,7 +3134,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         };
+
+
+
+
 
 
 
@@ -1576,7 +3150,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1584,7 +3166,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const paddedCode = normHK(code).padStart(4, '0');
+
+
+
+
 
 
 
@@ -1592,7 +3182,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1600,7 +3198,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -1608,7 +3214,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const data = await fetchAPI(url);
+
+
+
+
 
 
 
@@ -1616,7 +3230,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (quote && (quote.shortName || quote.longName)) {
+
+
+
+
 
 
 
@@ -1624,11 +3246,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
 
 
 
+
+
+
+
         } catch (e) {
+
+
+
+
 
 
 
@@ -1636,11 +3270,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1648,7 +3294,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -1656,7 +3310,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const data = await fetchAPI(chartUrl);
+
+
+
+
 
 
 
@@ -1664,7 +3326,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (meta && meta.symbol) {
+
+
+
+
 
 
 
@@ -1672,7 +3342,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -1680,7 +3358,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             console.warn('港股名称v8查询失败:', e.message);
+
+
+
+
 
 
 
@@ -1688,7 +3374,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1696,11 +3390,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1708,7 +3414,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1716,7 +3430,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         switch (type) {
+
+
+
+
 
 
 
@@ -1724,7 +3446,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             case 'a-stock': return (/^[569]/.test(code) ? 'sh' : 'sz') + code;
+
+
+
+
 
 
 
@@ -1732,7 +3462,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             case 'us-stock': return 'us' + code.toUpperCase().replace('.', '');
+
+
+
+
 
 
 
@@ -1740,7 +3478,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -1748,7 +3494,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1756,11 +3510,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const tcode = getTencentCode(type, code);
 
 
 
+
+
+
+
         const url = `https://qt.gtimg.cn/q=${tcode}&_=${Date.now()}`;
+
+
+
+
 
 
 
@@ -1768,7 +3534,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try { text = await fetchGBK(url); }
+
+
+
+
 
 
 
@@ -1776,7 +3550,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1784,7 +3566,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1792,7 +3582,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const pattern = new RegExp(`v_${tcode.replace('.', '\\\\.')}="([^"]*)"`);
+
+
+
+
 
 
 
@@ -1800,11 +3598,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!m) throw new Error(`无法解析 ${code} 数据`);
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1812,7 +3622,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         // 字段索引(0-based): 1=名称, 3=当前价, 4=昨收, 5=今开, 31=涨跌额, 32=涨跌幅, 33=最高, 34=最低
+
+
+
+
 
 
 
@@ -1820,7 +3638,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const price = parseFloat(fields[3]) || 0;
+
+
+
+
 
 
 
@@ -1828,7 +3654,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1836,7 +3670,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1844,7 +3686,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const change = price - prevClose;
+
+
+
+
 
 
 
@@ -1852,7 +3702,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1860,7 +3718,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             price, change, changePercent,
+
+
+
+
 
 
 
@@ -1868,7 +3734,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             low: parseFloat(fields[34]) || price,
+
+
+
+
 
 
 
@@ -1876,7 +3750,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             previousClose: prevClose,
+
+
+
+
 
 
 
@@ -1884,7 +3766,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         };
+
+
+
+
 
 
 
@@ -1892,7 +3782,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1900,7 +3798,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const tcode = getTencentCode(type, code);
+
+
+
+
 
 
 
@@ -1908,7 +3814,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -1916,7 +3830,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             try { text = await fetchGBK(url); }
+
+
+
+
 
 
 
@@ -1924,7 +3846,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const pattern = new RegExp(`v_${tcode.replace('.', '\\\\.')}="([^"]*)"`);
+
+
+
+
 
 
 
@@ -1932,7 +3862,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (m) {
+
+
+
+
 
 
 
@@ -1940,11 +3878,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return fields[1] || code;
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -1952,7 +3902,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return code;
+
+
+
+
 
 
 
@@ -1960,7 +3918,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1968,11 +3934,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     // 注：天天基金(fundgz.1234567.com.cn)接口已于2026年失效(返回404)，相关代码已移除。
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -1980,7 +3958,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function injectScript(url, varName, timeoutMs = 8000) {
+
+
+
+
 
 
 
@@ -1988,7 +3974,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const script = document.createElement('script');
+
+
+
+
 
 
 
@@ -1996,7 +3990,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             delete window[varName];
+
+
+
+
 
 
 
@@ -2004,11 +4006,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const timer = setTimeout(() => {
 
 
 
+
+
+
+
                 cleanup();
+
+
+
+
 
 
 
@@ -2016,11 +4030,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }, timeoutMs);
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -2028,7 +4054,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 clearTimeout(timer);
+
+
+
+
 
 
 
@@ -2036,7 +4070,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -2044,7 +4086,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             script.onload = () => {
+
+
+
+
 
 
 
@@ -2052,11 +4102,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 window[varName] = previous;
 
 
 
+
+
+
+
                 cleanup();
+
+
+
+
 
 
 
@@ -2064,7 +4126,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             };
+
+
+
+
 
 
 
@@ -2072,7 +4142,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             script.onerror = () => {
+
+
+
+
 
 
 
@@ -2080,7 +4158,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 cleanup();
+
+
+
+
 
 
 
@@ -2088,7 +4174,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             };
+
+
+
+
 
 
 
@@ -2096,7 +4190,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             script.src = url;
+
+
+
+
 
 
 
@@ -2104,7 +4206,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         });
+
+
+
+
 
 
 
@@ -2112,7 +4222,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -2120,7 +4238,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         // 东方财富「品种综述」脚本：含基金名称(fS_name)与完整净值历史(Data_netWorthTrend)
+
+
+
+
 
 
 
@@ -2128,7 +4254,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const url = `https://fund.eastmoney.com/pingzhongdata/${code}.js?rt=${Date.now()}`;
+
+
+
+
 
 
 
@@ -2136,7 +4270,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const script = document.createElement('script');
+
+
+
+
 
 
 
@@ -2144,7 +4286,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 cleanup();
+
+
+
+
 
 
 
@@ -2152,7 +4302,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }, 8000);
+
+
+
+
 
 
 
@@ -2160,7 +4318,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 clearTimeout(timer);
+
+
+
+
 
 
 
@@ -2168,7 +4334,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -2176,7 +4350,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 cleanup();
+
+
+
+
 
 
 
@@ -2184,7 +4366,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             };
+
+
+
+
 
 
 
@@ -2192,7 +4382,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 cleanup();
+
+
+
+
 
 
 
@@ -2200,7 +4398,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             };
+
+
+
+
 
 
 
@@ -2208,11 +4414,27 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             document.head.appendChild(script);
 
 
 
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -2224,11 +4446,27 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             throw new Error(`东方财富未返回基金 ${code} 净值数据`);
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -2240,7 +4478,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const nav = parseFloat(last.y);
+
+
+
+
 
 
 
@@ -2252,7 +4498,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         const navDate = last.x ? new Date(last.x).toISOString().slice(0, 10) : '';
+
+
+
+
 
 
 
@@ -2264,7 +4522,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         return {
+
+
+
+
 
 
 
@@ -2272,7 +4542,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             name,
+
+
+
+
 
 
 
@@ -2280,7 +4558,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             estimateNav: nav,
+
+
+
+
 
 
 
@@ -2288,7 +4574,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             navDate,
+
+
+
+
 
 
 
@@ -2296,7 +4590,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             change: (nav * changePercent / 100),
+
+
+
+
 
 
 
@@ -2304,11 +4606,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         };
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -2316,7 +4630,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function getEastMoneyFundName(code) {
+
+
+
+
 
 
 
@@ -2324,7 +4646,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const fS_name = await injectScript(
+
+
+
+
 
 
 
@@ -2332,7 +4662,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             );
+
+
+
+
 
 
 
@@ -2340,7 +4678,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         } catch (e) {
+
+
+
+
 
 
 
@@ -2348,11 +4694,27 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -2364,7 +4726,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     // 蛋卷 danjuanfunds.com/djapi/fund/{code} 免登录/免 Referer，返回 UTF-8 干净 JSON（含名称/单位净值/日期/日涨幅）。
+
+
+
+
 
 
 
@@ -2372,7 +4742,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     // 实测：源端 ~0.2s，覆盖全（含东财/新浪查不到的基金），数据质量优于新浪 fu_。
+
+
+
+
 
 
 
@@ -2380,7 +4758,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const url = `https://danjuanfunds.com/djapi/fund/${code}`;
+
+
+
+
 
 
 
@@ -2388,7 +4774,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         let data = null;
+
+
+
+
 
 
 
@@ -2396,7 +4790,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -2404,7 +4806,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (!r.ok) continue;
+
+
+
+
 
 
 
@@ -2412,7 +4822,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (json && json.data && json.data.fund_derived) { data = json.data; break; }
+
+
+
+
 
 
 
@@ -2420,7 +4838,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 console.warn(`蛋卷基金代理 ${proxy.substring(0, 40)} 失败:`, e.message);
+
+
+
+
 
 
 
@@ -2428,7 +4854,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -2440,7 +4874,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         const fd = data.fund_derived;
+
+
+
+
 
 
 
@@ -2448,11 +4894,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!isFinite(nav)) throw new Error(`蛋卷基金 ${code} 净值解析失败`);
 
 
 
+
+
+
+
         const navDate = fd.end_date || '';
+
+
+
+
 
 
 
@@ -2464,7 +4922,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         return {
+
+
+
+
 
 
 
@@ -2472,7 +4942,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             nav, estimateNav: nav, price: nav, navDate,
+
+
+
+
 
 
 
@@ -2480,7 +4958,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             timestamp: Date.now()
+
+
+
+
 
 
 
@@ -2488,7 +4974,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -2500,7 +4998,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -2508,7 +5014,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const proxies = getProxyList();
+
+
+
+
 
 
 
@@ -2516,7 +5030,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 try {
+
+
+
+
 
 
 
@@ -2524,7 +5046,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     if (!r.ok) continue;
+
+
+
+
 
 
 
@@ -2532,7 +5062,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     if (json && json.data && json.data.fd_name) return json.data.fd_name;
+
+
+
+
 
 
 
@@ -2540,11 +5078,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
 
 
 
+
+
+
+
             return code;
+
+
+
+
 
 
 
@@ -2552,7 +5102,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return code;
+
+
+
+
 
 
 
@@ -2560,7 +5118,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -2572,7 +5142,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function getTencentSecType(fieldsStr) {
+
+
+
+
 
 
 
@@ -2580,7 +5158,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const fields = fieldsStr.split('~');
+
+
+
+
 
 
 
@@ -2588,7 +5174,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (raw) return raw;
+
+
+
+
 
 
 
@@ -2596,7 +5190,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const KNOWN = ['ETF', 'LOF', 'GP-A', 'GP-B', 'KCB', 'CYB', 'INDEX', 'FUND', 'FUND-A', 'ZQ', 'KZZ', 'QZ'];
+
+
+
+
 
 
 
@@ -2604,7 +5206,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const t = (f || '').trim();
+
+
+
+
 
 
 
@@ -2612,7 +5222,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -2620,7 +5238,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -2632,7 +5262,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function identifyAssetType(rawCode) {
+
+
+
+
 
 
 
@@ -2640,11 +5278,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (/^[A-Z.]{1,6}$/.test(code)) return 'us-stock';
 
 
 
+
+
+
+
         if (/^\d{1,5}$/.test(code)) return 'hk-stock';
+
+
+
+
 
 
 
@@ -2656,7 +5306,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         // ① 腾讯财经：探测 沪(sh)/深(sz)，并读取「证券类型」字段作为识别依据
+
+
+
+
 
 
 
@@ -2664,7 +5326,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const tcode = prefix + code;
+
+
+
+
 
 
 
@@ -2672,7 +5342,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const url = `https://qt.gtimg.cn/q=${tcode}&_=${Date.now()}`;
+
+
+
+
 
 
 
@@ -2680,7 +5358,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 try { text = await fetchGBK(url); }
+
+
+
+
 
 
 
@@ -2688,7 +5374,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const m = text && text.match(new RegExp(`v_${tcode.replace('.', '\\.')}="([^"]*)"`));
+
+
+
+
 
 
 
@@ -2696,7 +5390,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     // 腾讯能返回即说明是交易所上市品种；场内ETF/LOF 与普通A股 均按用户决定并入「股票(a-stock)」
+
+
+
+
 
 
 
@@ -2704,7 +5406,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     const secType = getTencentSecType(m[1]);
+
+
+
+
 
 
 
@@ -2712,7 +5422,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     return 'a-stock';
+
+
+
+
 
 
 
@@ -2720,11 +5438,27 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             } catch (e) { /* 尝试另一个交易所 */ }
 
 
 
+
+
+
+
         }
+
+
+
+
+
+
+
+
 
 
 
@@ -2736,7 +5470,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (/^(5[0-9]|15|16)\d{4}$/.test(code)) return 'a-stock';
+
+
+
+
+
+
+
+
 
 
 
@@ -2748,7 +5494,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -2756,7 +5510,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (name && name !== code) return 'fund';
+
+
+
+
 
 
 
@@ -2768,7 +5530,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         // 都没命中：默认 A股，用户可手动切换为基金
+
+
+
+
 
 
 
@@ -2776,7 +5550,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -2788,7 +5574,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -2796,7 +5590,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -2804,7 +5606,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             console.log('演示模式');
+
+
+
+
 
 
 
@@ -2812,7 +5622,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -2820,11 +5638,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         // 线路一/线路二(腾讯+东财/蛋卷)：股票均走腾讯财经直连
 
 
 
+
+
+
+
         // 线路三(API Key模式)：两框均未勾选，走 Finnhub/必盈/Yahoo
+
+
+
+
 
 
 
@@ -2836,7 +5666,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         switch (type) {
+
+
+
+
 
 
 
@@ -2844,7 +5686,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             case 'a-stock': return useTencent ? await getTencentQuote(type, code) : await getBiyingAStockQuote(code);
+
+
+
+
 
 
 
@@ -2852,7 +5702,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (useTencent) return await getTencentQuote(type, code);
+
+
+
+
 
 
 
@@ -2860,11 +5718,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return await getYahooHKQuote(code);
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -2872,7 +5742,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 // 主源：东方财富 pingzhongdata（浏览器直连，免代理）
+
+
+
+
 
 
 
@@ -2880,7 +5758,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 catch (e) { console.log('东方财富失败，尝试蛋卷:', e.message); }
+
+
+
+
 
 
 
@@ -2888,7 +5774,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 try { return await getDanjuanFundNav(code); }
+
+
+
+
 
 
 
@@ -2896,7 +5790,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 throw new Error(`基金 ${code} 所有数据源均失败`);
+
+
+
+
 
 
 
@@ -2904,7 +5806,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             default: throw new Error(`不支持的资产类型: ${type}`);
+
+
+
+
 
 
 
@@ -2912,7 +5822,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -2920,11 +5838,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function getName(type, code) {
 
 
 
+
+
+
+
         const config = getConfig();
+
+
+
+
 
 
 
@@ -2936,7 +5866,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         const useTencent = !!(config.useLine1 || config.useLine2);
+
+
+
+
+
+
+
+
 
 
 
@@ -2948,11 +5894,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             case 'us-stock': {
 
 
 
+
+
+
+
                 if (useTencent) return await getTencentName(type, code);
+
+
+
+
 
 
 
@@ -2960,11 +5918,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return p.name || code.toUpperCase();
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -2972,7 +5942,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (useTencent) return await getTencentName(type, code);
+
+
+
+
 
 
 
@@ -2980,11 +5958,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return s.name || code;
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -2992,7 +5982,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (useTencent) return await getTencentName(type, code);
+
+
+
+
 
 
 
@@ -3000,11 +5998,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return h.name || code;
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -3012,7 +6022,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 // 主源：东方财富 pingzhongdata
+
+
+
+
 
 
 
@@ -3020,7 +6038,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 // 备用：蛋卷 djapi
+
+
+
+
 
 
 
@@ -3028,11 +6054,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 return code;
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -3040,7 +6078,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -3048,7 +6094,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -3056,7 +6110,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const results = [], errors = [];
+
+
+
+
 
 
 
@@ -3064,7 +6126,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -3072,7 +6142,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 results.push({
+
+
+
+
 
 
 
@@ -3080,7 +6158,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     price: quote.price || 0,
+
+
+
+
 
 
 
@@ -3088,7 +6174,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     changePercent: quote.changePercent || 0,
+
+
+
+
 
 
 
@@ -3096,7 +6190,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     updateTime: quote.timestamp || Date.now(),
+
+
+
+
 
 
 
@@ -3104,7 +6206,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 });
+
+
+
+
 
 
 
@@ -3112,7 +6222,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             } catch (error) {
+
+
+
+
 
 
 
@@ -3120,7 +6238,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 errors.push({ code: asset.code, error: error.message });
+
+
+
+
 
 
 
@@ -3128,7 +6254,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -3136,11 +6270,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -3148,11 +6294,7 @@ const APIManager = (function() {
 
 
 
-    
 
-
-
-    // ==================== 市场估值指标（蛋卷/雪球+VIX） ====================
 
 
 
@@ -3160,683 +6302,8 @@ const APIManager = (function() {
 
 
 
-    const INDICATOR_CACHE_KEY = 'investment_indicator_cache';
 
 
-
-    const DJ_INDEX_MAP = {
-
-
-
-        csi300Pe:   'SH000300',
-
-
-
-        star50:     'SZ399006',
-
-
-
-        dividend:      'CSIH30269',
-
-
-
-        nasdaqPe:   'NDX',
-
-
-
-        sp500Pe:    'SP500'
-
-
-
-    };
-
-
-
-    
-
-
-
-    const LEVEL_MAP = { low: '低估', middle: '正常', high: '高估' };
-
-
-
-    
-
-
-
-    function getCacheKey() {
-
-
-
-        const now = new Date();
-
-
-
-        const today = now.toISOString().slice(0, 10);
-
-
-
-        const period = now.getHours() < 12 ? 'am' : 'pm';
-
-
-
-        return today + '-' + period;
-
-
-
-    }
-
-
-
-    
-
-
-
-    function getCachedIndicators() {
-
-
-
-        try {
-
-
-
-            const raw = localStorage.getItem(INDICATOR_CACHE_KEY);
-
-
-
-            if (!raw) return null;
-
-
-
-            const cached = JSON.parse(raw);
-
-
-
-            if (cached.key === getCacheKey()) return cached.data;
-
-
-
-        } catch (e) {}
-
-
-
-        return null;
-
-
-
-    }
-
-
-
-    
-
-
-
-    function saveCachedIndicators(data) {
-
-
-
-        try { localStorage.setItem(INDICATOR_CACHE_KEY, JSON.stringify({ key: getCacheKey(), data })); } catch (e) {}
-
-
-
-    }
-
-
-
-    
-
-
-
-    // 缓存完整（所有key都有值）则直接返回，不做任何网络请求
-
-
-
-    function isCacheComplete(data) {
-
-
-
-        if (!data || !data.vix) return false;  // VIX必须有（Yahoo不稳定允许缺失）
-
-
-
-        // PE至少要有几个核心的
-
-
-
-        const keys = ['csi300Pe', 'sp500Pe'];
-
-
-
-        return keys.every(k => data[k] && data[k].value != null);
-
-
-
-    }
-
-
-
-    
-
-
-
-    async function fetchIndicators() {
-
-
-
-        const cached = getCachedIndicators();
-
-
-
-        // 缓存仅用于VIX/PE（减少请求）；银行五维/秋哥/XXFI 每次实时拉取，不缓存
-
-
-
-        const result = cached ? { ...cached, xxfi: null } : { vix: null, xxfi: null, sp500Pe: null, csi300Pe: null, star50: null, dividend: null };
-
-
-
-        let hasNew = false;
-
-
-
-        
-
-
-
-        // VIX: Yahoo（仅在缺失或缓存过期时重试）
-
-
-
-        if (!result.vix || !cached) {
-
-
-
-            try {
-
-
-
-                const d = await fetchAPI('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=2d');
-
-
-
-                const m = d?.chart?.result?.[0]?.meta;
-
-
-
-                if (m?.regularMarketPrice) {
-
-
-
-                    const p = m.regularMarketPrice, pp = m.chartPreviousClose || p;
-
-
-
-                    result.vix = { value: p, changePercent: pp ? (p - pp) / pp * 100 : null };
-
-
-
-                    hasNew = true;
-
-
-
-                }
-
-
-
-            } catch (e) { console.warn('VIX失败:', e.message); }
-
-
-
-        }
-
-
-
-        
-
-
-
-        // 五大指数PE: 蛋卷/雪球API
-
-
-
-        if (!cached || !result.csi300Pe) {
-
-
-
-            try {
-
-
-
-                const dj = await fetchAPI('https://danjuanfunds.com/djapi/index_eva/dj');
-
-
-
-                const items = dj?.data?.items;
-
-
-
-                if (items && Array.isArray(items)) {
-
-
-
-                    for (const [key, code] of Object.entries(DJ_INDEX_MAP)) {
-
-
-
-                        const item = items.find(i => i.index_code === code);
-
-
-
-                        if (item && item.pe) {
-
-
-
-                            // 红利低波：用股息率代替PE
-
-
-
-                            if (key === 'dividend' && item.yeild != null) {
-
-
-
-                                result[key] = { value: item.yeild, displayValue: item.yeild * 100, label: '%', level: '', changePercent: null };
-
-
-
-                            } else {
-
-
-
-                                result[key] = { value: item.pe, label: '倍', level: LEVEL_MAP[item.eva_type] || '', changePercent: null };
-
-
-
-                            }
-
-
-
-                            hasNew = true;
-
-
-
-                        }
-
-
-
-                    }
-
-
-
-                }
-
-
-
-            } catch (e) { console.warn('蛋卷PE失败:', e.message); }
-
-
-
-        }
-
-
-
-        
-
-
-
-        // 小旭恐慌指数(XXFI): raw GitHub（独立获取，不依赖蛋卷）
-
-
-
-        // 实时拉取，不缓存（与 cmb/秋哥一致；跨仓库产物可随时手动重跑，半天缓存会导致旧值卡死）
-
-
-
-        {
-
-
-
-            try {
-
-
-
-                const xxfiData = await fetchCrossRepo('xxfi');
-
-
-
-                if (xxfiData && xxfiData.XXFI != null) {
-
-
-
-                    result.xxfi = {
-
-
-
-                        value: xxfiData.XXFI,
-
-
-
-                        signal: xxfiData.contrarian_signal || '',
-
-
-
-                        level: xxfiData.level || '',
-
-
-
-                        advice: xxfiData.advice || '',
-
-
-
-                        dataDate: xxfiData._data_date || ''
-
-
-
-                    };
-
-
-
-                    hasNew = true;
-
-
-
-                }
-
-
-
-            } catch (e) { console.warn('XXFI失败:', e.message); }
-
-
-
-        }
-
-
-
-        
-
-
-
-        // 银行五维(cmb-tracker): raw GitHub（实时拉取，不缓存）
-
-
-
-        {
-
-
-
-            try {
-
-
-
-                const cmb = await fetchCrossRepo('cmb');
-
-
-
-                if (cmb && Array.isArray(cmb.banks)) {
-
-
-
-                    const sorted = [...cmb.banks].sort((a, b) => b.score_total - a.score_total);
-
-
-
-                    // 招行(600036)买入区间
-
-
-
-                    const zhStock = sorted.find(b => b.code === '600036');
-
-
-
-                    // 第二、三名买入区间（排除第一名招商银行）
-
-
-
-                    const top2_3 = sorted.slice(1, 3).map(b => ({
-
-
-
-                        name: b.short || b.name,
-
-
-
-                        zoneLow: b.zone_low,
-
-
-
-                        zoneHigh: b.zone_high
-
-
-
-                    }));
-
-
-
-                    result.cmbFiveDim = {
-
-
-
-                        dataDate: cmb.data_date || '',
-
-
-
-                        count: cmb.summary.total_banks,
-
-
-
-                        buys: cmb.summary.buy + cmb.summary.strong_buy,
-
-
-
-                        zhPrice: zhStock ? zhStock.price : null,
-
-
-
-                        zhZoneLow: zhStock ? zhStock.zone_low : null,
-
-
-
-                        zhZoneHigh: zhStock ? zhStock.zone_high : null,
-
-
-
-                        zhDivYield: zhStock ? zhStock.div_yield : null,
-
-
-
-                        top2_3: top2_3,
-
-
-
-                        banks: sorted.map(b => ({
-
-
-
-                            name: b.short || b.name,
-
-
-
-                            score: b.score_total,
-
-
-
-                            signal: b.signal
-
-
-
-                        }))
-
-
-
-                    };
-
-
-
-                    hasNew = true;
-
-
-
-                }
-
-
-
-            } catch (e) { console.warn('银行五维失败:', e.message); }
-
-
-
-        }
-
-
-
-        
-
-
-
-        // 秋哥操作: raw GitHub（每次实时拉取，不缓存）
-
-
-
-        {
-
-
-
-            try {
-
-
-
-                const qg = await fetchCrossRepo('qiuge');
-
-
-
-                if (qg && qg.data_date && qg.index) {
-
-
-
-                    result.qiuge = {
-
-
-
-                        dataDate: qg.data_date,
-
-
-
-                        reportType: qg.report_type || '',
-
-
-
-                        indexName: qg.index.name || '上证指数',
-
-
-
-                        indexClose: qg.index.close,
-
-
-
-                        indexChange: qg.index.change_pct,
-
-
-
-                        support: qg.levels.support,
-
-
-
-                        pressure: qg.levels.pressure,
-
-
-
-                        strongSupport: qg.levels.strong_support,
-
-
-
-                        positionMax: qg.position_max,
-
-
-
-                        picks: qg.picks_name || [],
-
-
-
-                        picksDetail: qg.picks_detail || [],
-
-
-
-                        watch: qg.watch || [],
-
-
-
-                        avoid: qg.avoid || [],
-
-
-
-                        outlook: qg.outlook || '',
-
-
-
-                        summary: qg.summary || ''
-
-
-
-                    };
-
-
-
-                    hasNew = true;
-
-
-
-                }
-
-
-
-            } catch (e) { console.warn('秋哥操作失败:', e.message); }
-
-
-
-        }
-
-
-
-        
-
-
-
-        if (hasNew) saveCachedIndicators(result);
-
-
-
-        return result;
-
-
-
-    }
-
-
-
-    
-
-
-
-    // ==================== 汇率转换 ====================
-
-
-
-    
-
-
-
-    let exchangeRates = { USD_CNY: 7.2, HKD_CNY: 0.92 }; // 默认汇率
-
-
-
-    let exchangeRateDate = ''; // 格式 YYYY-MM-DD，每天仅获取一次
-
-
-
-    
-
-
-
-    // 获取最新汇率（每天仅更新一次）
 
 
 
@@ -3844,7 +6311,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const today = new Date().toISOString().slice(0, 10);
+
+
+
+
 
 
 
@@ -3852,11 +6327,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -3864,7 +6351,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (data && data.rates) {
+
+
+
+
 
 
 
@@ -3872,7 +6367,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const hkdCny = usdCny / (data.rates.HKD || 7.83);
+
+
+
+
 
 
 
@@ -3880,7 +6383,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 exchangeRateDate = today;
+
+
+
+
 
 
 
@@ -3888,11 +6399,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
 
 
 
+
+
+
+
         } catch (e) {
+
+
+
+
 
 
 
@@ -3900,7 +6423,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -3908,11 +6439,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -3920,7 +6463,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -3928,7 +6479,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     // 返回数组: [{perShare, exDate, recordDate, reportPeriod, assignProgress, planProfile, ...}]
+
+
+
+
 
 
 
@@ -3936,7 +6495,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get'
+
+
+
+
 
 
 
@@ -3944,7 +6511,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             + '&reportName=RPT_SHAREBONUS_DET&columns=ALL&source=WEB&client=WEB'
+
+
+
+
 
 
 
@@ -3952,7 +6527,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -3960,7 +6543,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!data || !data.success || !data.result || !data.result.data) {
+
+
+
+
 
 
 
@@ -3968,11 +6559,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return [];
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -3980,7 +6583,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             securityCode: item.SECURITY_CODE,
+
+
+
+
 
 
 
@@ -3988,7 +6599,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             perShare: item.PRETAX_BONUS_RMB ? item.PRETAX_BONUS_RMB / 10 : null,  // 每10股 → 每股
+
+
+
+
 
 
 
@@ -3996,7 +6615,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             recordDate: item.EQUITY_RECORD_DATE ? item.EQUITY_RECORD_DATE.slice(0, 10) : null,
+
+
+
+
 
 
 
@@ -4004,7 +6631,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             assignProgress: item.ASSIGN_PROGRESS,  // 预披露 / 实施分配
+
+
+
+
 
 
 
@@ -4012,7 +6647,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             dividendRatio: item.DIVIDENT_RATIO,
+
+
+
+
 
 
 
@@ -4020,7 +6663,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             noticeDate: item.NOTICE_DATE ? item.NOTICE_DATE.slice(0, 10) : null,
+
+
+
+
 
 
 
@@ -4028,7 +6679,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }));
+
+
+
+
 
 
 
@@ -4036,7 +6695,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4044,7 +6711,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4052,7 +6727,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     // 返回: [{exDate, perUnit, navAfter, ...}]
+
+
+
+
 
 
 
@@ -4060,7 +6743,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         try {
+
+
+
+
 
 
 
@@ -4068,7 +6759,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const data = await injectScript(url, 'Data_netWorthTrend', 10000);
+
+
+
+
 
 
 
@@ -4076,7 +6775,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -4084,7 +6791,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             for (const item of data) {
+
+
+
+
 
 
 
@@ -4092,7 +6807,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     // 解析 "分红：每份派现金0.0110元"
+
+
+
+
 
 
 
@@ -4100,7 +6823,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     if (match && item.x) {
+
+
+
+
 
 
 
@@ -4108,7 +6839,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                         const exDate = new Date(item.x).toISOString().slice(0, 10);
+
+
+
+
 
 
 
@@ -4116,7 +6855,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                         dividends.push({
+
+
+
+
 
 
 
@@ -4124,7 +6871,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                             exDate,
+
+
+
+
 
 
 
@@ -4132,7 +6887,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                             currency: 'CNY'
+
+
+
+
 
 
 
@@ -4140,7 +6903,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     }
+
+
+
+
 
 
 
@@ -4148,7 +6919,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -4156,7 +6935,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         } catch (e) {
+
+
+
+
 
 
 
@@ -4164,7 +6951,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return [];
+
+
+
+
 
 
 
@@ -4172,11 +6967,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4184,7 +6991,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     // 返回: [{assetId, code, name, perShare, exDate, type, currency, reportPeriod}]
+
+
+
+
 
 
 
@@ -4192,7 +7007,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const assets = StorageManager.getAssets();
+
+
+
+
 
 
 
@@ -4200,7 +7023,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -4208,7 +7039,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         // 分红提醒窗口：仅除权日 ±REMIND_WINDOW_DAYS 天内提醒，超出不再弹（避免历史分红反复提醒）
+
+
+
+
 
 
 
@@ -4216,7 +7055,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const withinRemindWindow = (exDate) => {
+
+
+
+
 
 
 
@@ -4224,11 +7071,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return diff <= REMIND_WINDOW_DAYS;
 
 
 
+
+
+
+
         };
+
+
+
+
 
 
 
@@ -4236,7 +7095,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -4244,7 +7111,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const aStockCodes = [...new Set(
+
+
+
+
 
 
 
@@ -4252,7 +7127,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         )];
+
+
+
+
 
 
 
@@ -4260,7 +7143,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -4268,7 +7159,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const implemented = dividends.filter(d => 
+
+
+
+
 
 
 
@@ -4276,7 +7175,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 );
+
+
+
+
 
 
 
@@ -4284,7 +7191,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     if (!StorageManager.isDividendRecorded(code, d.exDate)) {
+
+
+
+
 
 
 
@@ -4292,7 +7207,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                             newDividends.push({
+
+
+
+
 
 
 
@@ -4300,7 +7223,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                                 code: d.securityCode,
+
+
+
+
 
 
 
@@ -4308,11 +7239,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                                 perShare: d.perShare,
 
 
 
+
+
+
+
                                 exDate: d.exDate,
+
+
+
+
 
 
 
@@ -4320,7 +7263,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                                 currency: 'CNY',
+
+
+
+
 
 
 
@@ -4328,7 +7279,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                             });
+
+
+
+
 
 
 
@@ -4336,7 +7295,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     }
+
+
+
+
 
 
 
@@ -4344,7 +7311,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             } catch (e) {
+
+
+
+
 
 
 
@@ -4352,7 +7327,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -4360,7 +7343,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -4368,7 +7359,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const fundCodes = [...new Set(
+
+
+
+
 
 
 
@@ -4376,7 +7375,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         )];
+
+
+
+
 
 
 
@@ -4384,7 +7391,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -4392,7 +7407,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const ready = dividends.filter(d => d.perUnit && d.exDate && withinRemindWindow(d.exDate));
+
+
+
+
 
 
 
@@ -4400,7 +7423,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     if (!StorageManager.isDividendRecorded(code, d.exDate)) {
+
+
+
+
 
 
 
@@ -4408,7 +7439,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                             newDividends.push({
+
+
+
+
 
 
 
@@ -4416,7 +7455,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                                 code, name: asset.name || code,
+
+
+
+
 
 
 
@@ -4424,7 +7471,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                                 exDate: d.exDate,
+
+
+
+
 
 
 
@@ -4432,7 +7487,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                                 navAfter: d.navAfter,
+
+
+
+
 
 
 
@@ -4440,7 +7503,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                             });
+
+
+
+
 
 
 
@@ -4448,7 +7519,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     }
+
+
+
+
 
 
 
@@ -4456,7 +7535,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             } catch (e) {
+
+
+
+
 
 
 
@@ -4464,11 +7551,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -4476,7 +7575,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return newDividends;
+
+
+
+
 
 
 
@@ -4484,7 +7591,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4492,7 +7607,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4500,7 +7623,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function toCNY(amount, currency) {
+
+
+
+
 
 
 
@@ -4508,7 +7639,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         switch (currency) {
+
+
+
+
 
 
 
@@ -4516,7 +7655,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             case 'HKD': return amount * exchangeRates.HKD_CNY;
+
+
+
+
 
 
 
@@ -4524,7 +7671,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -4532,7 +7687,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4540,7 +7703,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function getCurrencySymbol(currency) {
+
+
+
+
 
 
 
@@ -4548,11 +7719,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4560,7 +7743,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     function getAssetCurrency(type) {
+
+
+
+
 
 
 
@@ -4568,11 +7759,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4580,7 +7783,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4588,7 +7799,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         'AAPL':'Apple Inc.','TSLA':'Tesla, Inc.','MSFT':'Microsoft Corp.',
+
+
+
+
 
 
 
@@ -4596,7 +7815,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         'META':'Meta Platforms','JPM':'JPMorgan Chase',
+
+
+
+
 
 
 
@@ -4604,7 +7831,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         '600000':'浦发银行','600036':'招商银行','600519':'贵州茅台',
+
+
+
+
 
 
 
@@ -4612,7 +7847,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         '00700':'腾讯控股','09988':'阿里巴巴-SW','00388':'香港交易所',
+
+
+
+
 
 
 
@@ -4620,7 +7863,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         '01810':'小米集团-W','02318':'中国平安',
+
+
+
+
 
 
 
@@ -4628,7 +7879,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         '160119':'南方中证500ETF','161725':'招商中证白酒',
+
+
+
+
 
 
 
@@ -4636,7 +7895,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         '000751':'嘉实新兴产业','001475':'易方达国防军工'
+
+
+
+
 
 
 
@@ -4644,7 +7911,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4652,7 +7927,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         'AAPL':150,'TSLA':200,'MSFT':300,'GOOGL':130,'AMZN':120,
+
+
+
+
 
 
 
@@ -4660,7 +7943,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         '000001':12,'000002':8,'000858':150,'600000':7,
+
+
+
+
 
 
 
@@ -4668,7 +7959,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         '00700':320,'09988':80,'00388':300,'00939':5,
+
+
+
+
 
 
 
@@ -4676,7 +7975,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         '110022':4.5,'110023':2.8,'160119':7.2,'161725':1.2,
+
+
+
+
 
 
 
@@ -4684,11 +7991,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     };
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4696,7 +8015,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const bp = DEMO_BASE_PRICES[code] || 50.0;
+
+
+
+
 
 
 
@@ -4704,7 +8031,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const ch = bp * cp / 100;
+
+
+
+
 
 
 
@@ -4712,7 +8047,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return {
+
+
+
+
 
 
 
@@ -4720,7 +8063,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             high: p*1.01, low: p*0.99, open: bp, previousClose: bp,
+
+
+
+
 
 
 
@@ -4728,7 +8079,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         };
+
+
+
+
 
 
 
@@ -4736,7 +8095,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4744,7 +8111,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4752,7 +8127,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -4760,7 +8143,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     // 统一出口：cloudBackup(data, cfgOverride?) / cloudFetch(cfgOverride?)
+
+
+
+
 
 
 
@@ -4772,7 +8163,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
     // UTF-8 安全的 base64（浏览器 btoa 仅支持 Latin1，中文必须走此通道）
+
+
+
+
 
 
 
@@ -4780,11 +8183,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return btoa(unescape(encodeURIComponent(str)));
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -4792,11 +8207,27 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -4808,11 +8239,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function jsonbinBackup(data, config) {
 
 
 
+
+
+
+
         const binId = config.cloudBinId;
+
+
+
+
 
 
 
@@ -4820,7 +8263,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         let resp;
+
+
+
+
 
 
 
@@ -4828,7 +8279,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, { method: 'PUT', headers, body: JSON.stringify(data) });
+
+
+
+
 
 
 
@@ -4836,7 +8295,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             resp = await fetch('https://api.jsonbin.io/v3/b', { method: 'POST', headers, body: JSON.stringify(data) });
+
+
+
+
 
 
 
@@ -4844,11 +8311,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!resp.ok) { const err = await resp.text().catch(() => ''); throw new Error(`JSONBin ${resp.status}: ${err.substring(0, 200)}`); }
 
 
 
+
+
+
+
         const result = await resp.json();
+
+
+
+
 
 
 
@@ -4856,7 +8335,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -4864,7 +8351,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const binId = config.cloudBinId;
+
+
+
+
 
 
 
@@ -4872,7 +8367,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const resp = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, { headers: { 'X-Master-Key': config.cloudApiKey } });
+
+
+
+
 
 
 
@@ -4880,7 +8383,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const result = await resp.json();
+
+
+
+
 
 
 
@@ -4888,7 +8399,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -4900,7 +8423,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function giteeBackup(data, config) {
+
+
+
+
 
 
 
@@ -4908,7 +8439,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!token || !repo) throw new Error('请填写 Gitee 私人令牌与仓库(owner/repo)');
+
+
+
+
 
 
 
@@ -4916,7 +8455,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const url = `https://gitee.com/api/v5/repos/${repo}/contents/${path}`;
+
+
+
+
+
+
+
+
 
 
 
@@ -4928,7 +8479,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const getSha = async () => {
+
+
+
+
 
 
 
@@ -4936,7 +8495,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             try {
+
+
+
+
 
 
 
@@ -4944,7 +8511,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (g.status === 401 || g.status === 403) throw new Error('Gitee 鉴权失败：令牌无效或权限不足（请确认勾选 projects 权限）');
+
+
+
+
 
 
 
@@ -4952,7 +8527,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     const j = await g.json().catch(() => ({}));
+
+
+
+
 
 
 
@@ -4960,11 +8543,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     return j.sha || null;
 
 
 
+
+
+
+
                 }
+
+
+
+
 
 
 
@@ -4972,7 +8567,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             // 2) 降级 Bearer 头
+
+
+
+
 
 
 
@@ -4980,7 +8583,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const g = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store' });
+
+
+
+
 
 
 
@@ -4988,7 +8599,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (g.ok) {
+
+
+
+
 
 
 
@@ -4996,7 +8615,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                     if (Array.isArray(j)) return null;
+
+
+
+
 
 
 
@@ -5004,7 +8631,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 }
+
+
+
+
 
 
 
@@ -5012,7 +8647,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return null;
+
+
+
+
 
 
 
@@ -5020,7 +8663,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const putWith = (sha) => fetch(url, {
+
+
+
+
 
 
 
@@ -5028,7 +8679,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+
+
+
+
 
 
 
@@ -5036,7 +8695,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         });
+
+
+
+
 
 
 
@@ -5044,7 +8711,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             method: 'POST',
+
+
+
+
 
 
 
@@ -5052,11 +8727,27 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             body: JSON.stringify({ content, message: 'investment-tracker backup init', access_token: token })
 
 
 
+
+
+
+
         });
+
+
+
+
+
+
+
+
 
 
 
@@ -5068,7 +8759,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         //   每次重拉最新 SHA → 有则 PUT 覆盖、无则 POST 新建；
+
+
+
+
 
 
 
@@ -5076,7 +8775,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         let lastErr = '';
+
+
+
+
 
 
 
@@ -5084,7 +8791,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const sha = await getSha();
+
+
+
+
 
 
 
@@ -5092,7 +8807,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (resp.ok) return path;
+
+
+
+
 
 
 
@@ -5100,7 +8823,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const errText = await resp.text().catch(() => '');
+
+
+
+
 
 
 
@@ -5108,7 +8839,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (status === 401 || status === 403) throw new Error(lastErr);
+
+
+
+
 
 
 
@@ -5116,7 +8855,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             throw new Error(lastErr);
+
+
+
+
 
 
 
@@ -5124,7 +8871,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         throw new Error(lastErr || 'Gitee 备份失败：重试 3 次仍冲突');
+
+
+
+
 
 
 
@@ -5132,7 +8887,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function giteeFetch(config) {
+
+
+
+
 
 
 
@@ -5140,7 +8903,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!token || !repo) throw new Error('请填写 Gitee 私人令牌与仓库(owner/repo)');
+
+
+
+
 
 
 
@@ -5152,7 +8923,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         // GET：优先 ?access_token= 查询串，401/403 降级 Bearer 头（对齐 jingjishi 9.1）
+
+
+
+
 
 
 
@@ -5160,7 +8943,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             let resp = await fetch(`${url}?access_token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+
+
+
+
 
 
 
@@ -5168,7 +8959,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }, cache: 'no-store' });
+
+
+
+
 
 
 
@@ -5176,7 +8975,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (resp.status === 404) throw new Error('Gitee 仓库中暂无备份文件，请先在「同步方式」下备份一次（或检查仓库/路径是否正确）');
+
+
+
+
 
 
 
@@ -5184,7 +8991,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             return await resp.json().catch(() => ({}));
+
+
+
+
 
 
 
@@ -5192,7 +9007,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         let j = await doGet();
+
+
+
+
 
 
 
@@ -5200,7 +9023,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!j || Array.isArray(j) || !j.content) throw new Error('Gitee 读取成功但未返回文件内容，请检查仓库路径是否正确（应类似 data/user-data.json）');
+
+
+
+
 
 
 
@@ -5208,7 +9039,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -5220,7 +9063,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function githubBackup(data, config) {
+
+
+
+
 
 
 
@@ -5228,7 +9079,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (!token || !repo) throw new Error('请填写 GitHub 私人令牌与仓库(owner/repo)');
+
+
+
+
 
 
 
@@ -5236,7 +9095,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+
+
+
+
 
 
 
@@ -5248,7 +9115,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
+
+
+
+
         // SHA 冲突自动重试：循环最多 3 次（对齐 jingjishi 9.3）。GitHub 一律 PUT，遇 409 重拉 SHA 再写。
+
+
+
+
 
 
 
@@ -5256,7 +9135,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         for (let attempt = 0; attempt < 3; attempt++) {
+
+
+
+
 
 
 
@@ -5264,7 +9151,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const r = await fetch(url, { headers });
+
+
+
+
 
 
 
@@ -5272,7 +9167,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             else if (r.ok) { const j = await r.json(); sha = j.sha || null; }
+
+
+
+
 
 
 
@@ -5280,7 +9183,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 const err = await r.text().catch(() => '');
+
+
+
+
 
 
 
@@ -5288,7 +9199,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 if (r.status === 401 || r.status === 403) throw new Error(lastErr);
+
+
+
+
 
 
 
@@ -5296,7 +9215,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -5304,7 +9231,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
                 ? { message: 'investment-tracker backup update', content, sha }
+
+
+
+
 
 
 
@@ -5312,7 +9247,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const resp = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
+
+
+
+
 
 
 
@@ -5320,7 +9263,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             const errText = await resp.text().catch(() => '');
+
+
+
+
 
 
 
@@ -5328,7 +9279,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             if (resp.status === 409) continue;   // SHA 冲突，重拉最新 SHA 再写
+
+
+
+
 
 
 
@@ -5336,7 +9295,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
             throw new Error(lastErr);
+
+
+
+
 
 
 
@@ -5344,11 +9311,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         throw new Error(lastErr || 'GitHub 备份失败：重试 3 次仍冲突');
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -5356,7 +9335,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const { cloudRepo: repo, cloudPath: path, cloudToken: token } = config;
+
+
+
+
 
 
 
@@ -5364,7 +9351,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+
+
+
+
 
 
 
@@ -5372,7 +9367,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (resp.status === 404) throw new Error('GitHub 仓库中暂无备份文件，请先备份一次');
+
+
+
+
 
 
 
@@ -5380,7 +9383,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const j = await resp.json();
+
+
+
+
 
 
 
@@ -5388,7 +9399,19 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
 
 
 
@@ -5400,7 +9423,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     async function cloudBackup(data, cfgOverride) {
+
+
+
+
 
 
 
@@ -5408,7 +9439,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const provider = config.cloudProvider || 'jsonbin';
+
+
+
+
 
 
 
@@ -5416,7 +9455,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (provider === 'github') return await githubBackup(data, config);
+
+
+
+
 
 
 
@@ -5424,7 +9471,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -5432,7 +9487,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         const config = cfgOverride || getConfig();
+
+
+
+
 
 
 
@@ -5440,7 +9503,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         if (provider === 'gitee') return await giteeFetch(config);
+
+
+
+
 
 
 
@@ -5448,7 +9519,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         return await jsonbinFetch(config);
+
+
+
+
 
 
 
@@ -5456,7 +9535,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -5464,7 +9551,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         getFinnhubQuote, getFinnhubCompanyProfile,
+
+
+
+
 
 
 
@@ -5472,7 +9567,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         getBiyingAStockQuote, getBiyingAStockName,
+
+
+
+
 
 
 
@@ -5480,7 +9583,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         getYahooHKQuote, getYahooHKName,
+
+
+
+
 
 
 
@@ -5488,7 +9599,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         getEastMoneyFundNav, getEastMoneyFundName, getDanjuanFundNav, getDanjuanFundName, identifyAssetType,
+
+
+
+
 
 
 
@@ -5496,7 +9615,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         fetchExchangeRates, getExchangeRates, toCNY,
+
+
+
+
 
 
 
@@ -5504,11 +9631,23 @@ const APIManager = (function() {
 
 
 
+
+
+
+
         cloudBackup, cloudFetch,
 
 
 
-        fetchIndicators, fetchDividends, fetchFundDividends, checkNewDividends
+
+
+
+
+        fetchDividends, fetchFundDividends, checkNewDividends
+
+
+
+
 
 
 
@@ -5516,7 +9655,15 @@ const APIManager = (function() {
 
 
 
+
+
+
+
 })();
+
+
+
+
 
 
 
