@@ -2,10 +2,8 @@
  * 本地存储管理模块
  * 负责资产的增删改查，数据保存在localStorage中
  */
-
 const StorageManager = (function() {
     const STORAGE_KEY = 'investment_tracker_data';
-    
     // 数据变更通知钩子（自动同步用）：落库成功后触发
     let _dataChangeHook = null;
     function onDataChanged(cb) { _dataChangeHook = cb; }
@@ -14,7 +12,6 @@ const StorageManager = (function() {
     const CASH_KEY = 'investment_cash_balance';
     const DIVIDEND_KEY = 'investment_dividends';
     const SNOOZE_KEY = 'investment_dividend_snooze';
-    
     // 获取所有资产数据
     function getAssets() {
         try {
@@ -25,7 +22,6 @@ const StorageManager = (function() {
             return [];
         }
     }
-    
     // 保存所有资产数据
     function saveAssets(assets) {
         try {
@@ -37,7 +33,6 @@ const StorageManager = (function() {
             return false;
         }
     }
-    
     // 添加资产
     function addAsset(asset) {
         const assets = getAssets();
@@ -48,18 +43,15 @@ const StorageManager = (function() {
         saveAssets(assets);
         return asset;
     }
-    
     // 更新资产
     function updateAsset(id, updates) {
         const assets = getAssets();
         const index = assets.findIndex(a => a.id === id);
         if (index === -1) return null;
-        
         assets[index] = { ...assets[index], ...updates, updateTime: new Date().toISOString() };
         saveAssets(assets);
         return assets[index];
     }
-    
     // 删除资产
     function deleteAsset(id) {
         const assets = getAssets();
@@ -68,25 +60,21 @@ const StorageManager = (function() {
         saveAssets(filtered);
         return true;
     }
-    
     // 根据ID获取资产
     function getAssetById(id) {
         const assets = getAssets();
         return assets.find(a => a.id === id) || null;
     }
-    
     // 根据类型获取资产
     function getAssetsByType(type) {
         const assets = getAssets();
         if (type === 'all') return assets;
         return assets.filter(a => a.type === type);
     }
-    
     // 生成唯一ID
     function generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
     }
-    
     // 获取配置
     function getConfig() {
         try {
@@ -100,7 +88,6 @@ const StorageManager = (function() {
             return getDefaultConfig();
         }
     }
-    
     // 保存配置
     function saveConfig(config) {
         try {
@@ -111,7 +98,6 @@ const StorageManager = (function() {
             return false;
         }
     }
-    
     // 默认配置
     function getDefaultConfig() {
         return {
@@ -132,7 +118,6 @@ const StorageManager = (function() {
             categories: ['红利', '纳指100', '标普500']
         };
     }
-    
     // 清除所有数据
     function clearAllData() {
         localStorage.removeItem(STORAGE_KEY);
@@ -140,16 +125,13 @@ const StorageManager = (function() {
         localStorage.removeItem(DIVIDEND_KEY);
         return true;
     }
-    
     // ==================== 现金余额管理 ====================
-    
     function getCashBalance() {
         try {
             const data = localStorage.getItem(CASH_KEY);
             return data ? JSON.parse(data) : { CNY: 0, HKD: 0, USD: 0 };
         } catch (e) { return { CNY: 0, HKD: 0, USD: 0 }; }
     }
-    
     function setCashBalance(balance) {
         try {
             localStorage.setItem(CASH_KEY, JSON.stringify(balance));
@@ -157,29 +139,24 @@ const StorageManager = (function() {
             return true;
         } catch (e) { return false; }
     }
-    
     function addCash(amount, currency) {
         const bal = getCashBalance();
         bal[currency] = (bal[currency] || 0) + amount;
         return setCashBalance(bal);
     }
-    
     function deductCash(amount, currency) {
         const bal = getCashBalance();
         if ((bal[currency] || 0) < amount) return false;
         bal[currency] -= amount;
         return setCashBalance(bal);
     }
-    
     // ==================== 分红记录管理 ====================
-    
     function getDividendRecords() {
         try {
             const data = localStorage.getItem(DIVIDEND_KEY);
             return data ? JSON.parse(data) : [];
         } catch (e) { return []; }
     }
-    
     function saveDividendRecords(records) {
         try {
             localStorage.setItem(DIVIDEND_KEY, JSON.stringify(records));
@@ -187,16 +164,20 @@ const StorageManager = (function() {
             return true;
         } catch (e) { return false; }
     }
-    
+    // 本地时区日期 YYYY-MM-DD（toISOString 按 UTC，北京时间凌晨会取到昨天）
+    function todayStr() {
+        const d = new Date();
+        const p = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    }
     function addDividendRecord(record) {
         const records = getDividendRecords();
         record.id = 'div_' + generateId();
-        record.createDate = new Date().toISOString().slice(0, 10);
+        record.createDate = todayStr();
         records.push(record);
         saveDividendRecords(records);
         return record;
     }
-    
     function updateDividendRecord(id, updates) {
         const records = getDividendRecords();
         const idx = records.findIndex(r => r.id === id);
@@ -205,7 +186,6 @@ const StorageManager = (function() {
         saveDividendRecords(records);
         return records[idx];
     }
-    
     function deleteDividendRecord(id) {
         const records = getDividendRecords();
         const filtered = records.filter(r => r.id !== id);
@@ -213,19 +193,16 @@ const StorageManager = (function() {
         saveDividendRecords(filtered);
         return true;
     }
-    
     // 检查某只股票某次分红是否已记录（按代码+除权日去重）
     function isDividendRecorded(assetCode, exDate) {
         const records = getDividendRecords();
         return records.some(r => r.assetCode === assetCode && r.exDate === exDate);
     }
-    
     // 获取某资产的所有分红记录
     function getDividendsByAsset(assetId) {
         const records = getDividendRecords();
         return records.filter(r => r.assetId === assetId);
     }
-    
     // ==================== 分红"稍后提醒"暂存（避免未记录时每次打开都弹） ====================
     function getSnoozedDividends() {
         try {
@@ -233,11 +210,9 @@ const StorageManager = (function() {
             return d ? JSON.parse(d) : [];
         } catch (e) { return []; }
     }
-    
     function isDividendSnoozed(assetCode, exDate) {
         return getSnoozedDividends().some(s => s.code === assetCode && s.exDate === exDate);
     }
-    
     function snoozeDividend(assetCode, exDate) {
         const list = getSnoozedDividends();
         if (!list.some(s => s.code === assetCode && s.exDate === exDate)) {
@@ -245,7 +220,6 @@ const StorageManager = (function() {
             try { localStorage.setItem(SNOOZE_KEY, JSON.stringify(list)); } catch (e) {}
         }
     }
-    
     // 剥离敏感密钥（上传云端前调用）：深拷贝后清空各类 Key，本地不受影响
     function stripSecrets(data) {
         const clone = JSON.parse(JSON.stringify(data));
@@ -257,7 +231,6 @@ const StorageManager = (function() {
         }
         return clone;
     }
-    
     // 导出数据（syncTime 用于自动同步时间戳比对）
     function exportData() {
         const assets = getAssets();
@@ -266,7 +239,6 @@ const StorageManager = (function() {
         const dividends = getDividendRecords();
         return JSON.stringify({ assets, config, cash, dividends, syncTime: Date.now(), exportTime: new Date().toISOString() }, null, 2);
     }
-    
     // 导入数据
     function importData(jsonStr) {
         try {
@@ -299,7 +271,6 @@ const StorageManager = (function() {
             return false;
         }
     }
-    
     // 历史净值快照
     function getHistory() {
         try {
@@ -309,7 +280,7 @@ const StorageManager = (function() {
     }
     function addHistorySnapshot(totalCNY) {
         const history = getHistory();
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayStr();
         const last = history[history.length - 1];
         if (last && last.date === today) {
             last.value = Math.round(totalCNY * 100) / 100;
@@ -319,7 +290,6 @@ const StorageManager = (function() {
         }
         try { localStorage.setItem('investment_history', JSON.stringify(history)); } catch(e) {}
     }
-    
     // 公开API
     return {
         getAssets,

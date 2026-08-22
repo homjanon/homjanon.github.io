@@ -10,7 +10,7 @@
     <meta http-equiv="Expires" content="0">
     <link rel="manifest" href="manifest.json">
     <title>个人投资管理系统</title>
-    <link rel="stylesheet" href="css/style.css?v=20260801a">
+    <link rel="stylesheet" href="css/style.css?v=20260822a">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -40,7 +40,6 @@
                 </div>
             </div>
         </header>
-
         <!-- 总览卡片 -->
         <section class="overview-section">
             <div class="overview-cards">
@@ -74,7 +73,6 @@
                 </div>
             </div>
         </section>
-
         <!-- 分红检测通知 -->
         <section class="dividend-alert" id="dividend-alert" style="display:none">
             <div class="dividend-alert-content" style="flex-direction:column;align-items:stretch;gap:8px">
@@ -85,7 +83,6 @@
                 <div id="dividend-alert-list"></div>
             </div>
         </section>
-
         <!-- 饼图：投资分布 -->
         <section class="charts-section">
             <div class="charts-container">
@@ -103,10 +100,7 @@
                 </div>
             </div>
         </section>
-
         <!-- 市场指标 -->
-        
-
         <!-- 标签页导航 -->
         <section class="tabs-section">
             <div class="tabs">
@@ -127,14 +121,12 @@
                 </button>
             </div>
         </section>
-
         <!-- 添加资产按钮 -->
         <section class="action-section">
             <button id="btn-add-asset" class="btn btn-success">
                 <i class="fas fa-plus"></i> 添加资产
             </button>
         </section>
-
         <!-- 资产列表 -->
         <section class="assets-section">
             <div id="assets-list" class="assets-list">
@@ -145,14 +137,12 @@
                 </div>
             </div>
         </section>
-
         <!-- 底部信息 -->
         <footer class="footer">
             <p>数据更新时间: <span id="last-update">从未更新</span></p>
             <p class="footer-note">免责声明：本工具仅供参考，不构成投资建议。数据可能有延迟，请以官方数据为准。</p>
         </footer>
     </div>
-
     <!-- 添加/编辑资产模态框 -->
     <div id="modal-asset" class="modal">
         <div class="modal-content">
@@ -224,7 +214,6 @@
             </div>
         </div>
     </div>
-
     <!-- API配置模态框 -->
     <div id="modal-config" class="modal">
         <div class="modal-content">
@@ -269,7 +258,6 @@
                     <div class="form-group" style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:8px">
                         <small style="color:#94a3b8">-- 线路三：同时取消线路一、二，启用 API Key 模式（Finnhub/必盈/Yahoo，需自行申请 Key）--</small>
                     </div>
-                    
                     <div class="form-group">
                         <label>
                             <input type="checkbox" id="config-demo-mode"> 
@@ -309,9 +297,9 @@
                         <small class="form-hint">存放备份的私人仓库，例如 hopojalay/cloud</small>
                     </div>
                     <div class="form-group" id="grp-path" style="display:none">
-                        <label for="config-cloud-path">文件路径</label>
-                        <input type="text" id="config-cloud-path" placeholder="data/user-data.json" value="data/user-data.json">
-                        <small class="form-hint">仓库内相对路径，默认 data/user-data.json</small>
+                        <label for="config-cloud-path">仓库路径</label>
+                        <input type="text" id="config-cloud-path" placeholder="data/" value="data/user-data.json">
+                        <small class="form-hint">Gitee 视为<b>目录</b>（每次备份生成时间戳新文件，默认 data/，可留空用仓库根目录）；GitHub/JSONBin 为文件路径。</small>
                     </div>
                     <div class="form-group">
                         <label style="color:#2563eb;font-weight:600">
@@ -335,7 +323,6 @@
             </div>
         </div>
     </div>
-
     <!-- 加载动画 -->
     <div id="loading-overlay" class="loading-overlay" style="display: none;">
         <div class="loading-spinner">
@@ -343,7 +330,6 @@
             <p>正在加载数据...</p>
         </div>
     </div>
-
     <!-- 记录分红模态框 -->
     <div id="modal-dividend" class="modal">
         <div class="modal-content">
@@ -389,7 +375,6 @@
             </div>
         </div>
     </div>
-
     <!-- 基金补仓模态框 -->
     <div id="modal-buymore" class="modal">
         <div class="modal-content">
@@ -438,7 +423,6 @@
             </div>
         </div>
     </div>
-
     <!-- 分红记录列表模态框 -->
     <div id="modal-dividend-list" class="modal">
         <div class="modal-content" style="max-width:720px">
@@ -458,7 +442,6 @@
             </div>
         </div>
     </div>
-
     <!-- 现金编辑模态框 -->
     <div id="modal-cash-edit" class="modal">
         <div class="modal-content" style="max-width:400px">
@@ -489,10 +472,9 @@
             </div>
         </div>
     </div>
-
-    <script src="js/storage.js?v=20260801a"></script>
-    <script src="js/api.js?v=20260801a"></script>
-    <script src="js/ui.js?v=20260801a"></script>
-    <script src="js/app.js?v=20260801a"></script>
+    <script src="js/storage.js?v=20260822a"></script>
+    <script src="js/api.js?v=20260822a"></script>
+    <script src="js/ui.js?v=20260822a"></script>
+    <script src="js/app.js?v=20260822a"></script>
 </body>
 </html>
